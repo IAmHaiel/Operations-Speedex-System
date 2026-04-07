@@ -7,3 +7,11 @@ A Capstone Microservice System dedicated for creating an Operations with Authent
 - MSSQL 21 for **Database**
 - Swagger for **API**
 - Docker for **Containerization and Deployment**
+
+# Operations Systems Team
+| Roles  | Name |
+| ------------- | ------------- |
+| Project Manager | Vanessa Reuteras  |
+| Business Analyst and Quality Assurance | Kenneth Yulip  |
+| Fullstack Developer | Hermione Benitez  |
+| Fullstack Developer | John Angelo Mikhail Reveche  |
