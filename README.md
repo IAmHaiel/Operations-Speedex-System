@@ -1,2 +1,9 @@
 # Operations-Speedex-System
 A Capstone Microservice System dedicated for creating an Operations with Authentication System for Speedex Courier and Forwarder, Inc. that is developed by B.S. Information Technology 3-2 Students of P.U.P Quezon City Campus.
+
+# Operations Speedex System Tech Stack
+- REACT for **Frontend**
+- ASP.NET Web API (.NET 8) for **Backend**
+- MSSQL 21 for **Database**
+- Swagger for **API**
+- Docker for **Containerization and Deployment**
