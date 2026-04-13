@@ -17,9 +17,11 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapFallbackToFile("dist/index.html");
 
 app.Run();
