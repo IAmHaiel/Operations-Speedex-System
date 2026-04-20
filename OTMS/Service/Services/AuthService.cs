@@ -43,17 +43,32 @@ namespace OTMS.Service.Services
 
         public async Task<Employee?> RegisterAsync(EmployeeRegisterDTO request)
         {
-            if (await context.Employees.AnyAsync(u => u.EmployeeNumber == request.EmployeeNumber))
+            // Validate input
+            if (string.IsNullOrWhiteSpace(request.EmployeeNumber) ||
+                string.IsNullOrWhiteSpace(request.Password))
             {
                 return null;
             }
 
-            var employee = new Employee();
-            var hashedPassword = new PasswordHasher<Employee>()
-                .HashPassword(employee, request.Password);
+            // Check if employee already exists
+            var exists = await context.Employees
+                .AnyAsync(u => u.EmployeeNumber == request.EmployeeNumber);
 
-            employee.EmployeeNumber = request.EmployeeNumber;
-            employee.PasswordHash = hashedPassword;
+            if (exists)
+            {
+                return null;
+            }
+
+            var employee = new Employee
+            {
+                EmployeeNumber = request.EmployeeNumber.Trim(),
+                EmployeeName = request.EmployeeName?.Trim(),
+                ContactNumber = request.ContactNumber?.Trim(),
+                Role = request.Role?.Trim()
+            };
+
+            var passwordHasher = new PasswordHasher<Employee>();
+            employee.PasswordHash = passwordHasher.HashPassword(employee, request.Password);
 
             context.Employees.Add(employee);
             await context.SaveChangesAsync();

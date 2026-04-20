@@ -17,6 +17,17 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// for frontend development, allowing cross-origin requests from the frontend development server
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:5173")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 // Authorize Button
 builder.Services.AddSwaggerGen(options =>
 {
@@ -86,6 +97,8 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.UseStaticFiles();
+
+app.UseCors("DevPolicy");
 
 app.MapFallbackToFile("index.html");
 
