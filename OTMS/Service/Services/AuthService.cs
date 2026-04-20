@@ -31,9 +31,14 @@ namespace OTMS.Service.Services
             return await CreateTokenResponse(employee);
         }
 
-        public Task<TokenResponseDTO?> RefreshTokensAsync(RefreshTokenRequestDTO request)
+        public async Task<TokenResponseDTO?> RefreshTokensAsync(RefreshTokenRequestDTO request)
         {
-            throw new NotImplementedException();
+            var user = await ValidateRefreshTokenAsync(request.UserId, request.RefreshToken);
+
+            if (user is null)
+                return null;
+
+            return await CreateTokenResponse(user);
         }
 
         public async Task<Employee?> RegisterAsync(EmployeeRegisterDTO request)
@@ -110,6 +115,18 @@ namespace OTMS.Service.Services
                 );
 
             return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
+        }
+
+        private async Task<Employee?> ValidateRefreshTokenAsync(Guid userId, string refreshToken)
+        {
+            var user = await context.Employees.FindAsync(userId);
+
+            if (user is null || user.RefreshToken != refreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                return null;
+            }
+
+            return user;
         }
 
     }
