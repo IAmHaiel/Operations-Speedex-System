@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using OTMS.DTOs;
+using OTMS.Interfaces;
 using OTMS.Models;
 
 namespace OTMS.Controllers;
@@ -7,31 +9,55 @@ namespace OTMS.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    [HttpPost("login")]
-    public IActionResult Login([FromBody] LoginRequest request)
+    private readonly IAuthService _authService;
+
+    public AuthController(IAuthService authService)
     {
-        if (request is null || request.UserId <= 0 || string.IsNullOrWhiteSpace(request.Password))
-        {
-            return BadRequest(new { success = false, message = "User ID and password are required." });
-        }
-
-        // Example authentication logic.
-        // Replace with your own user store / database lookup.
-        // For demonstration, using hardcoded values.
-        if (request.UserId == 1 && request.Password == "password")
-        {
-            return Ok(new LoginResponse
-            (
-                Success: true,
-                Message: "Login successful.",
-                Token: "fake-jwt-token",
-                UserId: request.UserId
-            ));
-        }
-
-        return Unauthorized(new { success = false, message = "Invalid user ID or password." });
+        _authService = authService;
     }
 
-    public sealed record LoginRequest(int UserId, string Password);
-    public sealed record LoginResponse(bool Success, string Message, string Token, int UserId);
+    // POST api/auth/login
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] User_LoginDTO request)
+    {
+        if (request is null || request.UserId <= 0 || string.IsNullOrWhiteSpace(request.PasswordHash))
+            return BadRequest(new { success = false, message = "User ID and password are required." });
+
+        var result = await _authService.LoginAsync(request);
+
+        if (result is null)
+            return Unauthorized(new { success = false, message = "Invalid user ID or password." });
+
+        return Ok(new { success = true, message = "Login successful.", data = result });
+    }
+
+    // POST api/auth/register
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] User_RegisterDTO request)
+    {
+        if (request is null)
+            return BadRequest(new { success = false, message = "Invalid request." });
+
+        var result = await _authService.RegisterAsync(request);
+
+        if (result is null)
+            return BadRequest(new { success = false, message = "Employee with this contact number already exists." });
+
+        return Ok(new { success = true, message = "Employee registered successfully.", data = result });
+    }
+
+    // POST api/auth/refresh-token
+    [HttpPost("refresh-token")]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequestDTO request)
+    {
+        if (request is null)
+            return BadRequest(new { success = false, message = "Invalid request." });
+
+        var result = await _authService.RefreshTokensAsync(request);
+
+        if (result is null)
+            return Unauthorized(new { success = false, message = "Invalid or expired refresh token." });
+
+        return Ok(new { success = true, data = result });
+    }
 }

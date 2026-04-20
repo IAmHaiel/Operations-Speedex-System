@@ -9,8 +9,10 @@ public sealed class Employee
     public string Firstname { get; set; } = string.Empty;
     public string Lastname { get; set; } = string.Empty;
     public string ContactNo { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
+    public string PasswordHash { get; set; } = string.Empty;
     public EmployeeRole Role { get; set; }
+    public string? RefreshToken { get; set; }            
+    public DateTime? RefreshTokenExpiryDate { get; set; } 
 }
 
 public enum EmployeeRole
