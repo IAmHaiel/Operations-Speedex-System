@@ -36,9 +36,24 @@ namespace OTMS.Service.Services
             throw new NotImplementedException();
         }
 
-        public Task<Employee?> RegisterAsync(EmployeeRegisterDTO request)
+        public async Task<Employee?> RegisterAsync(EmployeeRegisterDTO request)
         {
-            throw new NotImplementedException();
+            if (await context.Employees.AnyAsync(u => u.EmployeeNumber == request.EmployeeNumber))
+            {
+                return null;
+            }
+
+            var employee = new Employee();
+            var hashedPassword = new PasswordHasher<Employee>()
+                .HashPassword(employee, request.Password);
+
+            employee.EmployeeNumber = request.EmployeeNumber;
+            employee.PasswordHash = hashedPassword;
+
+            context.Employees.Add(employee);
+            await context.SaveChangesAsync();
+
+            return employee;
         }
 
 
