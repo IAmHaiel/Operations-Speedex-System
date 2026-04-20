@@ -53,20 +53,5 @@ namespace OTMS.Controllers
         }
 
 
-        // Secured APIs
-        [Authorize]
-        [HttpGet]
-        public IActionResult AuthenticatedOnlyEndpoint()
-        {
-            return Ok("You are authenticated");
-        }
-
-        [Authorize(Roles = "Admin")]
-        [HttpGet("admin-only")]
-        public IActionResult AdminOnlyEndpoint()
-        {
-            return Ok("You are admin!");
-        }
-
     }
 }
