@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import './login.css';
 
 export default function Login() {
@@ -6,6 +7,8 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [statusMessage, setStatusMessage] = useState('');
     const [statusType, setStatusType] = useState<'success' | 'error' | ''>('');
+
+    const navigate = useNavigate();
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -16,7 +19,10 @@ export default function Login() {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ employeeNumber: employeeId, password }),
+                body: JSON.stringify({
+                    employeeNumber: employeeId,
+                    password,
+                }),
             });
 
             const data = await response.json();
@@ -25,7 +31,8 @@ export default function Login() {
                 localStorage.setItem('authToken', data.accessToken ?? '');
                 localStorage.setItem('refreshToken', data.refreshToken ?? '');
                 localStorage.setItem('employeeId', employeeId);
-                window.location.href = '/dashboard';
+
+                navigate('/SystemAdmin_Dashboard');
             } else {
                 setStatusMessage(data || 'Invalid Employee ID or password.');
                 setStatusType('error');
@@ -38,35 +45,43 @@ export default function Login() {
 
     return (
         <div className="login-page">
+            {/* LEFT SIDE */}
             <div className="login-left">
                 <div className="login-left-content">
-                    <div className="login-logo" style={{ background: 'transparent', padding: '0' }}>
-                        <h1 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--primary)' }}>Speedex</h1>
+                    <div className="login-logo">
+                        <h1 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--primary)' }}>
+                            Speedex
+                        </h1>
                     </div>
+
                     <p className="login-tagline">COURIER & FORWARDER, INC.</p>
+
                     <div className="login-steps">
                         <div className="login-step">
                             <div className="login-step-number">1</div>
                             <div>
                                 <strong>Enter Credentials</strong>
-                                <p>Use your assigned Employee ID and password to access the system.</p>
+                                <p>Use your assigned Employee ID and password.</p>
                             </div>
                         </div>
+
                         <div className="login-step">
                             <div className="login-step-number">2</div>
                             <div>
                                 <strong>Manage Deliveries</strong>
-                                <p>Track, assign, and update delivery orders in real-time.</p>
+                                <p>Track and update delivery orders in real-time.</p>
                             </div>
                         </div>
+
                         <div className="login-step">
                             <div className="login-step-number">3</div>
                             <div>
                                 <strong>Monitor Performance</strong>
-                                <p>View analytics and reports to optimize logistics operations.</p>
+                                <p>View analytics and reports.</p>
                             </div>
                         </div>
                     </div>
+
                     <div className="login-decorative-circles">
                         <div className="circle circle-1" />
                         <div className="circle circle-2" />
@@ -74,11 +89,17 @@ export default function Login() {
                 </div>
             </div>
 
+            {/* RIGHT SIDE */}
             <div className="login-right">
                 <form className="login-form" onSubmit={handleSubmit}>
-                    <span className="login-form-label label" style={{ color: 'var(--primary)' }}>SECURE ACCESS</span>
+                    <span className="login-form-label" style={{ color: 'var(--primary)' }}>
+                        SECURE ACCESS
+                    </span>
+
                     <h2 className="login-form-title">Login to System</h2>
-                    <p className="login-form-subtitle">Enter your credentials below to continue.</p>
+                    <p className="login-form-subtitle">
+                        Enter your credentials below to continue.
+                    </p>
 
                     <hr className="login-divider" />
 
@@ -87,18 +108,20 @@ export default function Login() {
                             className={`login-alert ${statusType}`}
                             style={{
                                 background: statusType === 'error' ? '#FFF1F1' : '#F1FAF6',
-                                border: `1px solid ${statusType === 'error' ? '#FFCDCD' : '#B7E1CB'}`,
+                                border: `1px solid ${statusType === 'error' ? '#FFCDCD' : '#B7E1CB'
+                                    }`,
+                                color: statusType === 'error' ? '#E31A1A' : '#0F6B2E',
                                 padding: '12px',
                                 borderRadius: '8px',
                                 marginBottom: '20px',
-                                color: statusType === 'error' ? '#E31A1A' : '#0F6B2E',
                                 fontSize: '14px',
                             }}
                         >
-                            <p style={{ margin: 0 }}>{statusMessage}</p>
+                            {statusMessage}
                         </div>
                     )}
 
+                    {/* Employee ID */}
                     <div className="form-group">
                         <label className="form-label">Employee ID</label>
                         <input
@@ -106,14 +129,15 @@ export default function Login() {
                             className="form-input"
                             placeholder="EMP-001"
                             value={employeeId}
-                            onChange={e => setEmployeeId(e.target.value)}
+                            onChange={(e) => setEmployeeId(e.target.value)}
                             required
                         />
-                        <small style={{ color: 'var(--text-secondary)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                        <small className="form-hint">
                             Use your Employee ID as the username.
                         </small>
                     </div>
 
+                    {/* Password */}
                     <div className="form-group">
                         <label className="form-label">Password</label>
                         <input
@@ -121,24 +145,34 @@ export default function Login() {
                             className="form-input"
                             placeholder="Enter password"
                             value={password}
-                            onChange={e => setPassword(e.target.value)}
+                            onChange={(e) => setPassword(e.target.value)}
                             required
                         />
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px' }}>
+                    {/* Options */}
+                    <div className="login-options">
+                        <label className="remember-me">
                             <input type="checkbox" /> Remember me
                         </label>
-                        <a href="#" style={{ color: 'var(--primary)', fontSize: '14px', textDecoration: 'none', fontWeight: '500' }}>Forgot password?</a>
+
+                        <Link to="/forgotpassword_page" className="forgot-link">
+                            Forgot password?
+                        </Link>
                     </div>
 
-                    <button type="submit" className="btn btn-dark btn-lg login-submit-btn" id="login-btn">
+                    {/* Submit */}
+                    <button
+                        type="submit"
+                        className="btn btn-dark btn-lg login-submit-btn"
+                    >
                         LOGIN TO DASHBOARD
                     </button>
                 </form>
 
-                <p className="login-footer">© 2026 <a href="#">Speedex Courier & Forwarder, Inc.</a> · All rights reserved.</p>
+                <p className="login-footer">
+                    © 2026 <a href="#">Speedex Courier & Forwarder, Inc.</a>
+                </p>
             </div>
         </div>
     );
