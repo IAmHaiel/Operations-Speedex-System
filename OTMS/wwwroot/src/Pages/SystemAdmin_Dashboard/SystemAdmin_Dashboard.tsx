@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './SystemAdmin_Dashboard.css';
+import { useNavigate } from 'react-router-dom';
 
 const dailyDeliveries = [
     { day: 'Mon', weekday: 30, peak: 10 },
@@ -23,7 +24,9 @@ const dailyDeliveries = [
 ];
 
 export default function Dashboard() {
+    const navigate = useNavigate();
     const employeeId = localStorage.getItem('employeeId') ?? '';
+
 
     return (
         <div className="dashboard-container">
@@ -91,7 +94,10 @@ export default function Dashboard() {
                             className="logout-btn"
                             onClick={() => {
                                 localStorage.removeItem('employeeId');
-                                window.location.href = '/login';
+                                localStorage.removeItem('refreshToken');
+                                localStorage.removeItem('authToken');
+
+                                navigate('/');
                             }}
                         >
                             Logout
