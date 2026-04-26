@@ -4,7 +4,7 @@ A Capstone Microservice System dedicated for creating an Operations and Task Man
 # OTMS Tech Stack
 - REACT for **Frontend**
 - ASP.NET Web API (.NET 8) for **Backend**
-- MSSQL 21 for **Database**
+- MSSQL 21 or MSSQL Express for **Database**
 - Swagger for **API**
 - Docker for **Containerization and Deployment**
 
