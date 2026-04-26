@@ -66,15 +66,14 @@ namespace OTMS.Controllers
         [ProducesResponseType(401)]
         [ProducesResponseType(403)]
         [ProducesResponseType(500)]
-        public async Task<ActionResult<Employee>> Register(EmployeeRegisterDTO request)
+        public async Task<IActionResult> Register(EmployeeRegisterDTO request)
         {
-            var user = await authService.RegisterAsync(request);
-            if (user is null)
-            {
-                return BadRequest("Employee Number already exists.");
-            }
+            var result = await authService.RegisterAsync(request);
 
-            return Ok(user);
+            if (result == null)
+                return BadRequest("Registration failed");
+
+            return Ok(result);
         }
     }
 }

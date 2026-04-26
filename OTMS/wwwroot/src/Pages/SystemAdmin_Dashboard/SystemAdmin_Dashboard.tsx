@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Users,
     ClipboardList,
@@ -89,7 +89,7 @@ const SYSTEM_STATUS_ITEMS = [
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function generatePassword(): string {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$!';
+    const chars = 'SpeedexEmployee2026';
     return Array.from({ length: 10 }, () =>
         chars.charAt(Math.floor(Math.random() * chars.length))
     ).join('');
@@ -137,7 +137,10 @@ function AddEmployeeModal({ onClose, onSuccess }: AddEmployeeModalProps) {
         if (submitting) return;
 
         const errs = validate(form);
-        if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+        if (Object.keys(errs).length > 0) {
+            setErrors(errs);
+            return;
+        }
 
         setSubmitting(true);
         setApiError('');
@@ -152,22 +155,33 @@ function AddEmployeeModal({ onClose, onSuccess }: AddEmployeeModalProps) {
             };
 
             const token = localStorage.getItem('authToken');
-            const res = await fetch('/api/account/register', {
+
+            const res = await fetch('/api/authorization/superadmin/register', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(payload),
             });
 
             if (!res.ok) {
-                const data = await res.json().catch(() => null);
-                throw new Error(data?.message ?? `Server error: ${res.status}`);
+                const errorData = await res.json().catch(() => ({}));
+                throw new Error(errorData.message || `Error ${res.status}: Action Failed`);
             }
 
-            onSuccess(payload);
+            const data = await res.json();
+
+            alert(
+                `Employee account created successfully!\n\n` +
+                `Employee Number: ${data.employeeNumber || payload.employeeNumber}\n` +
+                `Generated Password: ${data.password || payload.password}\n\n` +
+                `Save this password. It will not be shown again.`
+            );
+
+            onSuccess(data);
             onClose();
+
         } catch (err: any) {
             setApiError(err.message ?? 'Something went wrong. Please try again.');
         } finally {

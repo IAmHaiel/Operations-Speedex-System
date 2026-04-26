@@ -156,7 +156,7 @@ export default function Login() {
                             <input type="checkbox" /> Remember me
                         </label>
 
-                        <Link to="/forgotpassword_page" className="forgot-link">
+                        <Link to="/SystemAdmin_Dashboard" className="forgot-link">
                             Forgot password?
                         </Link>
                     </div>
