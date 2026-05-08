@@ -29,6 +29,23 @@ namespace OTMS.Controllers
         }
 
         /// <summary>
+        /// Activates the User Account. Only accessible to users with the "SystemAdmin" role.
+        /// </summary>
+        [Authorize(Roles = "SystemAdmin")]
+        [HttpPatch("activate-user")]
+        public async Task<IActionResult> ActivateUser(DeactivateUserDTO request)
+        {
+            var result = await accountManagementService.ActivateUser(request);
+
+            if(result is null)
+            {
+                return NotFound(new { Message = "Employee not found." });
+            }
+
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Deletes the User Account. Only accessible to users with the "SystemAdmin" role.
         /// </summary>
         [Authorize(Roles = "SystemAdmin")]

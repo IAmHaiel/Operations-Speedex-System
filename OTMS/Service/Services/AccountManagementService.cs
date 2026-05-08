@@ -14,6 +14,51 @@ namespace OTMS.Service.Services
         OTMSDbContext context
         ) : IAccountManagementService
     {
+        public async Task<ActivateUserResponseDTO?> ActivateUser(DeactivateUserDTO request)
+        {
+            var exist = context.Employees
+                .Include(e => e.Account)
+                .FirstOrDefault(e => e.EmployeeNumber == request.EmployeeNumber);
+
+            if (exist is null || exist.Account is null)
+            {
+                return null;
+            }
+
+            var systemAdminAccount = exist.Account.Role;
+
+            if (systemAdminAccount is not null && systemAdminAccount == "SystemAdmin")
+            {
+                throw new InvalidOperationException("Cannot modify the System Admin account.");
+            }
+
+            var accountStatus = exist.Account.AccountStatus;
+
+            if (accountStatus == "Active")
+            {
+                throw new InvalidOperationException("Account is already active.");
+            }
+
+            await context.Employees
+                .Where(e => e.EmployeeId == exist.EmployeeId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(e => e.UpdatedAt, DateTime.UtcNow));
+
+            await context.Accounts
+                .Where(e => e.EmployeeId == exist.EmployeeId)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(e => e.AccountStatus, "Active")
+                    .SetProperty(e => e.UpdatedAt, DateTime.UtcNow)
+                    .SetProperty(e => e.FailedLoginAttempts, 0));
+
+            return new ActivateUserResponseDTO
+            {
+                EmployeeNumber = exist.EmployeeNumber,
+                Success = true,
+                ActivatedAt = DateTime.UtcNow
+            };
+        }
+
         public async Task<DeactivateUserResponseDTO?> DeactivateUser(DeactivateUserDTO request)
         {
             // Get the employee by employee number
