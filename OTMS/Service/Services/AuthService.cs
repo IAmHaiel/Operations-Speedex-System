@@ -63,7 +63,7 @@ namespace OTMS.Service.Services
                         a => a.EmployeeId == employee.EmployeeId
                     );
 
-                if(Account is not null)
+                if (Account is not null && Account.Role != "SystemAdmin")
                 {
                     Account.FailedLoginAttempts++;
                     context.Accounts.Update(Account);
