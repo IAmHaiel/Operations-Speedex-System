@@ -1,7 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using OTMS.Data;
 using OTMS.Entities.DTOs.Profile;
 using OTMS.Entities.DTOs.Profile.Responses;
+using OTMS.Entities.Models;
 using OTMS.Service.Interfaces;
 using System.Security.Claims;
 
@@ -12,9 +14,57 @@ namespace OTMS.Service.Services
         IHttpContextAccessor httpContextAccessor
         ) : IProfileService
     {
-        public Task<ChangePasswordResponseDTO?> ChangePassword(ChangePasswordDTO request)
+        public async Task<ChangePasswordResponseDTO?> ChangePassword(ChangePasswordDTO request)
         {
-            throw new NotImplementedException();
+            var claimProfile = httpContextAccessor
+               .HttpContext?
+               .User
+               .FindFirst(ClaimTypes.NameIdentifier)?
+               .Value;
+
+            if (string.IsNullOrEmpty(claimProfile))
+                return null;
+
+            var profile = await context.Employees
+                .Include(e => e.Account)
+                .FirstOrDefaultAsync(e => e.Account.AccountId.ToString() == claimProfile);
+
+            if (profile is null || profile.Account is null)
+                return null;
+
+            // Change Password
+            var passwordHasher = new PasswordHasher<Account>();
+
+            var verificationResult = passwordHasher.VerifyHashedPassword(
+                profile.Account, 
+                profile.Account.PasswordHash, 
+                request.CurrentPassword
+                );
+
+            if(verificationResult == PasswordVerificationResult.Failed)
+            {
+                return new ChangePasswordResponseDTO
+                {
+                    EmployeeNumber = profile.EmployeeNumber,
+                    Success = false
+                };
+            }
+
+            profile.Account.PasswordHash = passwordHasher.HashPassword(
+                profile.Account, 
+                request.NewPassword
+                );
+            profile.UpdatedAt = DateTime.UtcNow;
+            profile.Account.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+            
+            return new ChangePasswordResponseDTO
+            {
+                EmployeeNumber = profile.EmployeeNumber,
+                NewPassword = request.NewPassword,
+                Success = true
+            };
         }
 
         public async Task<UpdateInformationResponseDTO?> UpdateBasicInformation(UpdateInformationDTO request)

@@ -18,7 +18,7 @@ namespace OTMS.Controllers
         public async Task<IActionResult> ViewProfile()
         {
             var result = await profileService.ViewProfile();
-            if(result is null)
+            if (result is null)
             {
                 return NotFound(new { Message = "Employee not found." });
             }
@@ -33,12 +33,30 @@ namespace OTMS.Controllers
         public async Task<IActionResult> UpdateProfile(UpdateInformationDTO request)
         {
             var result = await profileService.UpdateBasicInformation(request);
-            if(result is null)
+            if (result is null)
             {
                 return NotFound(new { Message = "Employee not found." });
             }
             return Ok(result);
         }
 
+        /// <summary>
+        /// Changes Password of the User's Account to the System. Only accessible to users that are within the scoped role and authenticated.
+        /// </summary>
+        [Authorize(Roles = "SystemAdmin,OperationAdmin,Coordinator,Encoder")]
+        [HttpPatch("change-password")]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDTO request)
+        {
+            var result = await profileService.ChangePassword(request);
+            if (result is null)
+            {
+                return NotFound(new { Message = "Employee not found." });
+            }
+            if (!result.Success)
+            {
+                return BadRequest(new { Message = "Current password is incorrect." });
+            }
+            return Ok(result);
+        }
     }
 }
