@@ -41,6 +41,20 @@ namespace OTMS.Service.Services
                 request.CurrentPassword
                 );
 
+            // Check if the current password is correct
+            if (verificationResult == PasswordVerificationResult.Success)
+            {
+                // Check if the new password is the same as the current password
+                if (request.CurrentPassword == request.NewPassword)
+                {
+                    return new ChangePasswordResponseDTO
+                    {
+                        EmployeeNumber = profile.EmployeeNumber,
+                        Success = false
+                    };
+                }
+            }
+
             if(verificationResult == PasswordVerificationResult.Failed)
             {
                 return new ChangePasswordResponseDTO

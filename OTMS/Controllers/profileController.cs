@@ -54,7 +54,7 @@ namespace OTMS.Controllers
             }
             if (!result.Success)
             {
-                return BadRequest(new { Message = "Current password is incorrect." });
+                return BadRequest(new { Message = "Current password is incorrect or Current password is still the same as the new password." });
             }
             return Ok(result);
         }
