@@ -189,5 +189,31 @@ namespace OTMS.Service.Services
                 DeletedAt = DateTime.UtcNow
             };
         }
+
+        public async Task<SearchUserResponseDTO?> SearchUser(SearchUserDTO request)
+        {
+            var employee = await context.Employees
+                .Include(e => e.Account)
+                .FirstOrDefaultAsync(e =>
+                    e.EmployeeName.Contains(request.Search) ||
+                    e.EmployeeNumber.Contains(request.Search) ||
+                    e.Account.Role.Contains(request.Search)
+                    );
+
+            if (employee is null || employee.Account is null)
+            {
+                return null;
+            }
+
+            return new SearchUserResponseDTO
+            {
+                EmployeeNumber = employee.EmployeeNumber,
+                EmployeeName = employee.EmployeeName,
+                Role = employee.Account.Role,
+                AccountStatus = employee.Account.AccountStatus,
+                Success = true
+            };
+
+        }
     }
 }

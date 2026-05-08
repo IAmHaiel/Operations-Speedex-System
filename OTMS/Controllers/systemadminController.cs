@@ -12,6 +12,21 @@ namespace OTMS.Controllers
     {
 
         /// <summary>
+        /// Searches for the User Account. Only accessible to users with the "SystemAdmin" role.
+        /// </summary>
+        [Authorize(Roles = "SystemAdmin")]
+        [HttpGet("search-user")]
+        public async Task<IActionResult> SearchUser([FromQuery] SearchUserDTO employeeNumber)
+        {
+            var result = await accountManagementService.SearchUser(employeeNumber);
+            if(result is null)
+            {
+                return NotFound(new { Message = "Employee not found." });
+            }
+            return Ok(result);
+        }
+
+        /// <summary>
         /// Deactivates the User Account. Only accessible to users with the "SystemAdmin" role.
         /// </summary>
         [Authorize(Roles = "SystemAdmin")]
