@@ -190,6 +190,23 @@ namespace OTMS.Service.Services
             };
         }
 
+        public async Task<List<RecentEmployeesResponseDTO>> GetRecentEmployees()
+        {
+            return await context.Employees
+                .Include(e => e.Account)
+                .OrderByDescending(e => e.CreatedAt)
+                .Take(10)
+                .Select(e => new RecentEmployeesResponseDTO
+                {
+                    EmployeeNumber = e.EmployeeNumber,
+                    EmployeeName = e.EmployeeName,
+                    ContactNumber = e.ContactNumber,
+                    Role = e.Account != null ? e.Account.Role : "No Account",
+                    AccountStatus = e.Account != null ? e.Account.AccountStatus : "No Account",
+                })
+                .ToListAsync();
+        }
+
         public async Task<SearchUserResponseDTO?> SearchUser(SearchUserDTO request)
         {
             var employee = await context.Employees

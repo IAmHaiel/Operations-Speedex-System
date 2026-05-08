@@ -5,6 +5,7 @@ namespace OTMS.Service.Interfaces
 {
     public interface IAccountManagementService
     {
+        Task<List<RecentEmployeesResponseDTO>> GetRecentEmployees();
         Task<SearchUserResponseDTO?> SearchUser(SearchUserDTO request);
         Task<DeactivateUserResponseDTO?> DeactivateUser(DeactivateUserDTO request);
         Task<ActivateUserResponseDTO?> ActivateUser(DeactivateUserDTO request);

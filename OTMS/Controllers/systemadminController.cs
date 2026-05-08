@@ -12,6 +12,18 @@ namespace OTMS.Controllers
     {
 
         /// <summary>
+        /// Get the Recent Employees from the System. Only accessible to users with the "SystemAdmin" role.
+        /// </summary>
+        [Authorize(Roles = "SystemAdmin")]
+        [HttpGet("recent-employees")]
+        public async Task<IActionResult> GetRecentEmployees()
+        {
+            var result = await accountManagementService.GetRecentEmployees();
+            return Ok(result);
+        }
+
+
+        /// <summary>
         /// Searches for the User Account. Only accessible to users with the "SystemAdmin" role.
         /// </summary>
         [Authorize(Roles = "SystemAdmin")]
