@@ -1,9 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    ArrowLeft,
     User,
-    Users,
     Phone,
     Shield,
     Hash,
@@ -25,9 +23,19 @@ import {
     BarChart3,
     UserCircle2,
 } from 'lucide-react';
+
 import './employee_detail.css';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────
+
+type NavTab =
+    | 'dashboard'
+    | 'employees'
+    | 'delivery'
+    | 'analytics'
+    | 'profile';
 
 interface EmployeeProfile {
     employeeNumber: string;
@@ -53,7 +61,9 @@ interface ActivityLog {
     timestamp: string;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────
 
 const ROLES = [
     'System Admin',
@@ -64,21 +74,47 @@ const ROLES = [
     'Encoder',
 ];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+const NAV_ITEMS: {
+    tab: NavTab;
+    icon: any;
+    label: string;
+}[] = [
+        { tab: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+        { tab: 'employees', icon: Package, label: 'Manage Employees' },
+        { tab: 'delivery', icon: Truck, label: 'Delivery' },
+        { tab: 'analytics', icon: BarChart3, label: 'Analytics' },
+        { tab: 'profile', icon: UserCircle2, label: 'Profile' },
+    ];
 
-const toBackendRole = (role: string) => role.replace(/\s+/g, '');
-const toDisplayRole = (role: string) => role.replace(/([a-z])([A-Z])/g, '$1 $2');
+// ─────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────
+
+const toBackendRole = (role: string) =>
+    role.replace(/\s+/g, '');
+
+const toDisplayRole = (role: string) =>
+    role.replace(/([a-z])([A-Z])/g, '$1 $2');
 
 const fmtDate = (d: string | null) => {
     if (!d) return '—';
-    return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    return new Date(d).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+    });
 };
 
 const fmtDateTime = (d: string | null) => {
     if (!d) return '—';
+
     return new Date(d).toLocaleString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric',
-        hour: '2-digit', minute: '2-digit',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
     });
 };
 
@@ -90,16 +126,32 @@ const deliveryStatusClass = (s: string) => {
         failed: 'ds-failed',
         returned: 'ds-returned',
     };
+
     return map[s?.toLowerCase()] ?? 'ds-pending';
 };
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// SKELETON
+// ─────────────────────────────────────────────────────────────
 
-function Skeleton({ w = '100%', h = 16 }: { w?: string | number; h?: number }) {
-    return <div className="skel" style={{ width: w, height: h }} />;
+function Skeleton({
+    w = '100%',
+    h = 16,
+}: {
+    w?: string | number;
+    h?: number;
+}) {
+    return (
+        <div
+            className="skel"
+            style={{ width: w, height: h }}
+        />
+    );
 }
 
-// ─── Edit Modal ───────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// EDIT MODAL
+// ─────────────────────────────────────────────────────────────
 
 interface EditModalProps {
     profile: EmployeeProfile;
@@ -107,69 +159,100 @@ interface EditModalProps {
     onSaved: (updated: EmployeeProfile) => void;
 }
 
-function EditProfileModal({ profile, onClose, onSaved }: EditModalProps) {
+function EditProfileModal({
+    profile,
+    onClose,
+    onSaved,
+}: EditModalProps) {
     const [form, setForm] = useState({
         employeeName: profile.employeeName,
         contactNumber: profile.contactNumber,
         role: toDisplayRole(profile.role),
         accountStatus: profile.accountStatus,
     });
+
     const [submitting, setSubmitting] = useState(false);
     const [apiError, setApiError] = useState('');
 
-    const set = (key: keyof typeof form) =>
-        (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-            setForm(prev => ({ ...prev, [key]: e.target.value }));
-            setApiError('');
-        };
+    const set =
+        (key: keyof typeof form) =>
+            (
+                e: React.ChangeEvent<
+                    HTMLInputElement | HTMLSelectElement
+                >
+            ) => {
+                setForm(prev => ({
+                    ...prev,
+                    [key]: e.target.value,
+                }));
+
+                setApiError('');
+            };
 
     const handleSave = async () => {
-        if (!form.employeeName.trim()) { setApiError('Full name is required.'); return; }
+        if (!form.employeeName.trim()) {
+            setApiError('Full name is required.');
+            return;
+        }
+
         setSubmitting(true);
+
         try {
             const token = localStorage.getItem('authToken');
 
             const updateRes = await fetch(
-                `/api/systemadmin/update-user?employeeNumber=${encodeURIComponent(profile.employeeNumber)}`,
+                `/api/systemadmin/update-user?employeeNumber=${encodeURIComponent(
+                    profile.employeeNumber
+                )}`,
                 {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
                     body: JSON.stringify({
-                        employeeNumber: profile.employeeNumber,
+                        employeeNumber:
+                            profile.employeeNumber,
                         employeeName: form.employeeName,
-                        contactNumber: form.contactNumber,
+                        contactNumber:
+                            form.contactNumber,
                     }),
                 }
             );
+
             if (!updateRes.ok) {
-                const err = await updateRes.json().catch(() => ({}));
-                throw new Error(err.message || `Error ${updateRes.status}`);
+                throw new Error(
+                    `Error ${updateRes.status}`
+                );
             }
 
-            if (toBackendRole(form.role) !== profile.role) {
-                const roleRes = await fetch('/api/systemadmin/assign-role', {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ employeeNumber: profile.employeeNumber, roleName: toBackendRole(form.role) }),
-                });
+            if (
+                toBackendRole(form.role) !==
+                profile.role
+            ) {
+                const roleRes = await fetch(
+                    '/api/systemadmin/assign-role',
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type':
+                                'application/json',
+                            Authorization: `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            employeeNumber:
+                                profile.employeeNumber,
+                            roleName: toBackendRole(
+                                form.role
+                            ),
+                        }),
+                    }
+                );
+
                 if (!roleRes.ok) {
-                    const err = await roleRes.json().catch(() => ({}));
-                    throw new Error(err.message || `Error ${roleRes.status}`);
-                }
-            }
-
-            if (form.accountStatus !== profile.accountStatus) {
-                const endpoint = form.accountStatus === 'Active'
-                    ? '/api/systemadmin/activate-user'
-                    : '/api/systemadmin/deactivate-user';
-                const statusRes = await fetch(endpoint, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ employeeNumber: profile.employeeNumber }),
-                });
-                if (!statusRes.ok) {
-                    const err = await statusRes.json().catch(() => ({}));
-                    throw new Error(err.message || `Error ${statusRes.status}`);
+                    throw new Error(
+                        `Error ${roleRes.status}`
+                    );
                 }
             }
 
@@ -178,60 +261,151 @@ function EditProfileModal({ profile, onClose, onSaved }: EditModalProps) {
                 employeeName: form.employeeName,
                 contactNumber: form.contactNumber,
                 role: toBackendRole(form.role),
-                accountStatus: form.accountStatus,
+                accountStatus:
+                    form.accountStatus,
             });
+
             onClose();
         } catch (err: any) {
-            setApiError(err.message ?? 'Something went wrong.');
+            setApiError(
+                err.message ??
+                'Something went wrong.'
+            );
         } finally {
             setSubmitting(false);
         }
     };
 
     return (
-        <div className="ed-modal-overlay" onClick={onClose}>
-            <div className="ed-modal-card" onClick={e => e.stopPropagation()}>
+        <div
+            className="ed-modal-overlay"
+            onClick={onClose}
+        >
+            <div
+                className="ed-modal-card"
+                onClick={e => e.stopPropagation()}
+            >
                 <div className="ed-modal-header">
                     <div>
                         <h3>Edit Employee</h3>
-                        <p>Update details for {profile.employeeName}</p>
+                        <p>
+                            Update details for{' '}
+                            {profile.employeeName}
+                        </p>
                     </div>
-                    <button className="ed-icon-btn" onClick={onClose}><X size={16} /></button>
+
+                    <button
+                        className="ed-icon-btn"
+                        onClick={onClose}
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
+
                 {apiError && (
-                    <div className="ed-api-error"><AlertCircle size={14} /><span>{apiError}</span></div>
+                    <div className="ed-api-error">
+                        <AlertCircle size={14} />
+                        <span>{apiError}</span>
+                    </div>
                 )}
+
                 <div className="ed-modal-form">
                     <div className="ed-field">
                         <label>Full Name</label>
-                        <input type="text" value={form.employeeName} onChange={set('employeeName')} />
+
+                        <input
+                            type="text"
+                            value={form.employeeName}
+                            onChange={set(
+                                'employeeName'
+                            )}
+                        />
                     </div>
+
                     <div className="ed-field">
                         <label>Contact Number</label>
-                        <input type="tel" value={form.contactNumber} onChange={set('contactNumber')} />
+
+                        <input
+                            type="tel"
+                            value={form.contactNumber}
+                            onChange={set(
+                                'contactNumber'
+                            )}
+                        />
                     </div>
+
                     <div className="ed-field-row">
                         <div className="ed-field">
                             <label>Role</label>
-                            <select value={form.role} onChange={set('role')}>
-                                {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+
+                            <select
+                                value={form.role}
+                                onChange={set('role')}
+                            >
+                                {ROLES.map(r => (
+                                    <option
+                                        key={r}
+                                        value={r}
+                                    >
+                                        {r}
+                                    </option>
+                                ))}
                             </select>
                         </div>
+
                         <div className="ed-field">
-                            <label>Account Status</label>
-                            <select value={form.accountStatus} onChange={set('accountStatus')}>
-                                <option value="Active">Active</option>
-                                <option value="Deactivated">Deactivated</option>
+                            <label>
+                                Account Status
+                            </label>
+
+                            <select
+                                value={
+                                    form.accountStatus
+                                }
+                                onChange={set(
+                                    'accountStatus'
+                                )}
+                            >
+                                <option value="Active">
+                                    Active
+                                </option>
+
+                                <option value="Deactivated">
+                                    Deactivated
+                                </option>
                             </select>
                         </div>
                     </div>
                 </div>
+
                 <div className="ed-modal-actions">
-                    <button className="ed-btn" onClick={onClose} disabled={submitting}>Cancel</button>
-                    <button className="ed-btn ed-btn-primary" onClick={handleSave} disabled={submitting}>
-                        {submitting
-                            ? <><Loader2 size={13} className="spin" /> Saving…</>
-                            : <><Save size={13} /> Save Changes</>}
+                    <button
+                        className="ed-btn"
+                        onClick={onClose}
+                        disabled={submitting}
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        className="ed-btn ed-btn-primary"
+                        onClick={handleSave}
+                        disabled={submitting}
+                    >
+                        {submitting ? (
+                            <>
+                                <Loader2
+                                    size={13}
+                                    className="spin"
+                                />
+                                Saving…
+                            </>
+                        ) : (
+                            <>
+                                <Save size={13} />
+                                Save Changes
+                            </>
+                        )}
                     </button>
                 </div>
             </div>
@@ -239,109 +413,325 @@ function EditProfileModal({ profile, onClose, onSaved }: EditModalProps) {
     );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────────────────────
 
 export default function EmployeeDetail() {
-    const { employeeNumber } = useParams<{ employeeNumber: string }>();
+    const { employeeNumber } =
+        useParams<{
+            employeeNumber: string;
+        }>();
+
     const navigate = useNavigate();
 
-    const [profile, setProfile] = useState<EmployeeProfile | null>(null);
-    const [deliveries, setDeliveries] = useState<DeliveryRecord[]>([]);
-    const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
-    const [loadingProfile, setLoadingProfile] = useState(true);
-    const [loadingDeliveries, setLoadingDeliveries] = useState(true);
-    const [loadingLogs, setLoadingLogs] = useState(true);
-    const [fetchError, setFetchError] = useState('');
-    const [showEdit, setShowEdit] = useState(false);
-    const [deleting, setDeleting] = useState(false);
-    const [activeSection, setActiveSection] = useState<'overview' | 'deliveries' | 'activity'>('overview');
+    const [activeTab, setActiveTab] =
+        useState<NavTab>('dashboard');
 
-    // ── Fetch profile ──
-    // Strategy: pull the full employee list and find by employeeNumber.
-    // This avoids needing a separate single-employee endpoint.
+    const [profile, setProfile] =
+        useState<EmployeeProfile | null>(
+            null
+        );
+
+    const [deliveries, setDeliveries] =
+        useState<DeliveryRecord[]>([]);
+
+    const [activityLogs, setActivityLogs] =
+        useState<ActivityLog[]>([]);
+
+    const [loadingProfile, setLoadingProfile] =
+        useState(true);
+
+    const [
+        loadingDeliveries,
+        setLoadingDeliveries,
+    ] = useState(true);
+
+    const [loadingLogs, setLoadingLogs] =
+        useState(true);
+
+    const [fetchError, setFetchError] =
+        useState('');
+
+    const [showEdit, setShowEdit] =
+        useState(false);
+
+    const [deleting, setDeleting] =
+        useState(false);
+
+    const [activeSection, setActiveSection] =
+        useState<
+            'overview' | 'deliveries' | 'activity'
+        >('overview');
+
+    // ─────────────────────────────────────────
+    // SIDEBAR NAVIGATION
+    // ─────────────────────────────────────────
+
+    const handleSidebarNavigation = (
+        tab: NavTab
+    ) => {
+        setActiveTab(tab);
+
+        switch (tab) {
+            case 'dashboard':
+                navigate(
+                    '/systemadmin_dashboard'
+                );
+                break;
+
+            case 'employees':
+                navigate(
+                    '/systemadmin_dashboard'
+                );
+                break;
+
+            case 'delivery':
+                navigate(
+                    '/systemadmin_dashboard'
+                );
+                break;
+
+            case 'analytics':
+                navigate(
+                    '/systemadmin_dashboard'
+                );
+                break;
+
+            case 'profile':
+                navigate(
+                    '/systemadmin_dashboard'
+                );
+                break;
+
+            default:
+                break;
+        }
+    };
+
+    // ─────────────────────────────────────────
+    // DELIVERY COUNTS
+    // ─────────────────────────────────────────
+
+    const totalDeliveries =
+        deliveries.length;
+
+    const completedDeliveries =
+        deliveries.filter(
+            d =>
+                d.status?.toLowerCase() ===
+                'delivered'
+        ).length;
+
+    const inTransit =
+        deliveries.filter(
+            d =>
+                d.status?.toLowerCase() ===
+                'in-transit'
+        ).length;
+
+    const failedDeliveries =
+        deliveries.filter(d =>
+            ['failed', 'returned'].includes(
+                d.status?.toLowerCase()
+            )
+        ).length;
+
+    // ─────────────────────────────────────────
+    // FETCH PROFILE
+    // ─────────────────────────────────────────
+
     useEffect(() => {
         if (!employeeNumber) return;
-        const token = localStorage.getItem('authToken');
-        const decoded = decodeURIComponent(employeeNumber);
 
-        fetch('/api/systemadmin/recent-employees', {
-            headers: { 'Authorization': `Bearer ${token}` },
-        })
-            .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+        const token =
+            localStorage.getItem(
+                'authToken'
+            );
+
+        const decoded =
+            decodeURIComponent(
+                employeeNumber
+            );
+
+        fetch(
+            '/api/systemadmin/recent-employees',
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        )
+            .then(res => {
+                if (!res.ok)
+                    throw new Error();
+
+                return res.json();
+            })
             .then((data: any[]) => {
-                const found = data.find((e: any) => e.employeeNumber === decoded);
-                if (!found) throw new Error('Employee not found in list');
+                const found = data.find(
+                    e =>
+                        e.employeeNumber ===
+                        decoded
+                );
+
+                if (!found)
+                    throw new Error();
+
                 setProfile({
-                    employeeNumber: found.employeeNumber,
-                    employeeName: found.employeeName,
-                    // handle both camelCase and snake_case field names from backend
-                    contactNumber: found.contactNumber ?? found.contact_number ?? '',
+                    employeeNumber:
+                        found.employeeNumber,
+                    employeeName:
+                        found.employeeName,
+                    contactNumber:
+                        found.contactNumber ??
+                        '',
                     role: found.role ?? '',
-                    accountStatus: found.accountStatus ?? found.account_status ?? 'Active',
+                    accountStatus:
+                        found.accountStatus ??
+                        'Active',
                 });
             })
             .catch(() => {
-                // Fallback to a dedicated endpoint if list approach fails
-                fetch(`/api/systemadmin/get-user?employeeNumber=${encodeURIComponent(decoded)}`, {
-                    headers: { 'Authorization': `Bearer ${token}` },
-                })
-                    .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
-                    .then((data: any) => {
-                        setProfile({
-                            employeeNumber: data.employeeNumber,
-                            employeeName: data.employeeName,
-                            contactNumber: data.contactNumber ?? data.contact_number ?? '',
-                            role: data.role ?? '',
-                            accountStatus: data.accountStatus ?? data.account_status ?? 'Active',
-                        });
-                    })
-                    .catch(() => setFetchError('Could not load employee details. Please go back and try again.'))
-                    .finally(() => setLoadingProfile(false));
+                setFetchError(
+                    'Could not load employee details.'
+                );
             })
-            .finally(() => setLoadingProfile(false));
+            .finally(() =>
+                setLoadingProfile(false)
+            );
     }, [employeeNumber]);
 
-    // ── Fetch deliveries ──
+    // ─────────────────────────────────────────
+    // FETCH DELIVERIES
+    // ─────────────────────────────────────────
+
     useEffect(() => {
         if (!employeeNumber) return;
-        const token = localStorage.getItem('authToken');
-        fetch(`/api/systemadmin/employee/${encodeURIComponent(employeeNumber)}/deliveries`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-        })
-            .then(res => { if (!res.ok) return []; return res.json(); })
-            .then(data => setDeliveries(Array.isArray(data) ? data : []))
-            .catch(() => setDeliveries([]))
-            .finally(() => setLoadingDeliveries(false));
+
+        const token =
+            localStorage.getItem(
+                'authToken'
+            );
+
+        fetch(
+            `/api/systemadmin/employee/${encodeURIComponent(
+                employeeNumber
+            )}/deliveries`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        )
+            .then(res => {
+                if (!res.ok) return [];
+
+                return res.json();
+            })
+            .then(data =>
+                setDeliveries(
+                    Array.isArray(data)
+                        ? data
+                        : []
+                )
+            )
+            .catch(() =>
+                setDeliveries([])
+            )
+            .finally(() =>
+                setLoadingDeliveries(false)
+            );
     }, [employeeNumber]);
 
-    // ── Fetch activity logs ──
+    // ─────────────────────────────────────────
+    // FETCH ACTIVITY LOGS
+    // ─────────────────────────────────────────
+
     useEffect(() => {
         if (!employeeNumber) return;
-        const token = localStorage.getItem('authToken');
-        fetch(`/api/activity-logs/employee/${encodeURIComponent(employeeNumber)}`, {
-            headers: { 'Authorization': `Bearer ${token}` },
-        })
-            .then(res => { if (!res.ok) return []; return res.json(); })
-            .then(data => setActivityLogs(Array.isArray(data) ? data : []))
-            .catch(() => setActivityLogs([]))
-            .finally(() => setLoadingLogs(false));
+
+        const token =
+            localStorage.getItem(
+                'authToken'
+            );
+
+        fetch(
+            `/api/activity-logs/employee/${encodeURIComponent(
+                employeeNumber
+            )}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            }
+        )
+            .then(res => {
+                if (!res.ok) return [];
+
+                return res.json();
+            })
+            .then(data =>
+                setActivityLogs(
+                    Array.isArray(data)
+                        ? data
+                        : []
+                )
+            )
+            .catch(() =>
+                setActivityLogs([])
+            )
+            .finally(() =>
+                setLoadingLogs(false)
+            );
     }, [employeeNumber]);
+
+    // ─────────────────────────────────────────
+    // ACTIONS
+    // ─────────────────────────────────────────
 
     const handleDelete = async () => {
         if (!profile) return;
-        if (!confirm(`Delete ${profile.employeeName} permanently? This cannot be undone.`)) return;
+
+        if (
+            !confirm(
+                `Delete ${profile.employeeName} permanently?`
+            )
+        )
+            return;
+
         setDeleting(true);
+
         try {
-            const token = localStorage.getItem('authToken');
-            const res = await fetch('/api/systemadmin/delete-user', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ employeeNumber: profile.employeeNumber }),
-            });
-            if (!res.ok) throw new Error('Delete failed');
+            const token =
+                localStorage.getItem(
+                    'authToken'
+                );
+
+            const res = await fetch(
+                '/api/systemadmin/delete-user',
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type':
+                            'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        employeeNumber:
+                            profile.employeeNumber,
+                    }),
+                }
+            );
+
+            if (!res.ok)
+                throw new Error();
+
             navigate(-1);
         } catch {
-            alert('Failed to delete employee. Please try again.');
+            alert(
+                'Failed to delete employee.'
+            );
         } finally {
             setDeleting(false);
         }
@@ -349,100 +739,145 @@ export default function EmployeeDetail() {
 
     const handleToggleStatus = async () => {
         if (!profile) return;
-        const next = profile.accountStatus === 'Active' ? 'Deactivated' : 'Active';
-        const endpoint = next === 'Active'
-            ? '/api/systemadmin/activate-user'
-            : '/api/systemadmin/deactivate-user';
+
+        const next =
+            profile.accountStatus ===
+                'Active'
+                ? 'Deactivated'
+                : 'Active';
+
+        const endpoint =
+            next === 'Active'
+                ? '/api/systemadmin/activate-user'
+                : '/api/systemadmin/deactivate-user';
+
         try {
-            const token = localStorage.getItem('authToken');
-            const res = await fetch(endpoint, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ employeeNumber: profile.employeeNumber }),
-            });
-            if (!res.ok) throw new Error('Status update failed');
-            setProfile(prev => prev ? { ...prev, accountStatus: next } : prev);
+            const token =
+                localStorage.getItem(
+                    'authToken'
+                );
+
+            const res = await fetch(
+                endpoint,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type':
+                            'application/json',
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        employeeNumber:
+                            profile.employeeNumber,
+                    }),
+                }
+            );
+
+            if (!res.ok)
+                throw new Error();
+
+            setProfile(prev =>
+                prev
+                    ? {
+                        ...prev,
+                        accountStatus: next,
+                    }
+                    : prev
+            );
         } catch {
-            alert('Failed to update status. Please try again.');
+            alert(
+                'Failed to update status.'
+            );
         }
     };
 
-    const totalDeliveries = deliveries.length;
-    const completedDeliveries = deliveries.filter(d => d.status?.toLowerCase() === 'delivered').length;
-    const inTransit = deliveries.filter(d => d.status?.toLowerCase() === 'in-transit').length;
-    const failedDeliveries = deliveries.filter(d => ['failed', 'returned'].includes(d.status?.toLowerCase())).length;
+    const handleLogout = () => {
+        [
+            'employeeId',
+            'refreshToken',
+            'authToken',
+        ].forEach(k =>
+            localStorage.removeItem(k)
+        );
+
+        navigate('/');
+    };
+
+    // ─────────────────────────────────────────
+    // JSX
+    // ─────────────────────────────────────────
 
     return (
         <div className="ed-page">
-
-            {/* ── Sidebar ── */}
-            <aside className="ed-sidebar">
-                <div className="ed-sidebar-logo">
-                    <img src="/src/assets/SpeedexLogo.jpg" alt="Speedex Logo" className="ed-sidebar-logo-img" />
+            <aside className="sidebar">
+                <div className="sidebar-logo">
+                    <img
+                        src="/src/assets/SpeedexLogo.jpg"
+                        alt="Speedex Logo"
+                        className="sidebar-logo-img"
+                    />
                 </div>
-                <nav className="ed-sidebar-nav">
-                    {[
-                        { icon: LayoutDashboard, label: 'Dashboard' },
-                        { icon: Users, label: 'Manage Employees', active: true },
-                        { icon: Truck, label: 'Delivery' },
-                        { icon: BarChart3, label: 'Analytics' },
-                        { icon: UserCircle2, label: 'Profile' },
-                    ].map(({ icon: Icon, label, active }) => (
-                        <div
-                            key={label}
-                            className={`ed-nav-item${active ? ' active' : ''}`}
-                            onClick={() => navigate(-1)}
-                        >
-                            <Icon size={22} />
-                            <span>{label}</span>
-                        </div>
-                    ))}
+
+                <nav className="sidebar-nav">
+                    {NAV_ITEMS.map(
+                        ({
+                            tab,
+                            icon: Icon,
+                            label,
+                        }) => (
+                            <div
+                                key={tab}
+                                className={`nav-item${activeTab === tab
+                                    ? ' active'
+                                    : ''
+                                    }`}
+                                onClick={() =>
+                                    handleSidebarNavigation(
+                                        tab
+                                    )
+                                }
+                            >
+                                <Icon size={22} />
+                                <span>
+                                    {label}
+                                </span>
+                            </div>
+                        )
+                    )}
                 </nav>
-                <div className="ed-sidebar-footer">
-                    <div className="ed-user-block">
-                        <div className="ed-avatar-sm">
-                            {(localStorage.getItem('employeeName') ?? 'A').charAt(0).toUpperCase()}
+
+                <div className="sidebar-footer">
+                    <div className="user-block">
+                        <div className="avatar-circle">
+                            {profile?.employeeName
+                                ? profile.employeeName
+                                    .charAt(0)
+                                    .toUpperCase()
+                                : 'E'}
                         </div>
-                        <div className="ed-user-text">
-                            <span>Welcome!</span>
-                            <strong>{localStorage.getItem('employeeName') ?? 'Admin'}</strong>
+
+                        <div className="user-text">
+                            <span className="welcome-text">
+                                Welcome!
+                            </span>
+
+                            <strong>
+                                {profile?.employeeName ??
+                                    'Employee'}
+                            </strong>
                         </div>
                     </div>
-                    <button className="ed-logout-btn" onClick={() => {
-                        ['employeeId', 'refreshToken', 'authToken'].forEach(k => localStorage.removeItem(k));
-                        navigate('/');
-                    }}>Logout</button>
+
+                    <button
+                        className="logout-btn-sidebar"
+                        onClick={handleLogout}
+                    >
+                        Logout
+                    </button>
                 </div>
             </aside>
 
-            {/* ── Main ── */}
             <main className="ed-main">
-
-                {/* Top bar */}
-                <div className="ed-topbar">
-                    <button className="ed-back-btn" onClick={() => navigate(-1)}>
-                        <ArrowLeft size={16} /> Back to Employees
-                    </button>
-                    {profile && (
-                        <div className="ed-topbar-actions">
-                            <button
-                                className={`ed-btn ed-btn-ghost${profile.accountStatus === 'Active' ? ' deactivate' : ' activate'}`}
-                                onClick={handleToggleStatus}
-                            >
-                                {profile.accountStatus === 'Active'
-                                    ? <><ToggleLeft size={15} /> Deactivate</>
-                                    : <><ToggleRight size={15} /> Activate</>}
-                            </button>
-                            <button className="ed-btn ed-btn-secondary" onClick={() => setShowEdit(true)}>
-                                <Pencil size={14} /> Edit Profile
-                            </button>
-                            <button className="ed-btn ed-btn-danger" onClick={handleDelete} disabled={deleting}>
-                                {deleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />} Delete
-                            </button>
-                        </div>
-                    )}
-                </div>
-
                 {/* Error state */}
                 {fetchError && (
                     <div className="ed-fetch-error">
@@ -496,15 +931,39 @@ export default function EmployeeDetail() {
                                     { label: 'Activity Logs', value: activityLogs.length, cls: '' },
                                 ].map(({ label, value, cls }) => (
                                     <div key={label} className="ed-hero-stat">
-                                        <span className={`ed-hero-stat-value ${cls}`}>{loadingDeliveries ? '—' : value}</span>
+                                        <span className={`ed-hero-stat-value ${cls}`}>
+                                            {loadingDeliveries ? '—' : value}
+                                        </span>
                                         <span className="ed-hero-stat-label">{label}</span>
                                     </div>
                                 ))}
                             </div>
                         )}
                     </div>
-                )}
 
+
+                )}
+                {/* Top bar — actions only, no back button */}
+                {profile && (
+                    <div className="ed-topbar">
+                        <div className="ed-topbar-actions">
+                            <button
+                                className={`ed-btn ed-btn-ghost${profile.accountStatus === 'Active' ? ' deactivate' : ' activate'}`}
+                                onClick={handleToggleStatus}
+                            >
+                                {profile.accountStatus === 'Active'
+                                    ? <><ToggleLeft size={15} /> Deactivate</>
+                                    : <><ToggleRight size={15} /> Activate</>}
+                            </button>
+                            <button className="ed-btn ed-btn-secondary" onClick={() => setShowEdit(true)}>
+                                <Pencil size={14} /> Edit Profile
+                            </button>
+                            <button className="ed-btn ed-btn-danger" onClick={handleDelete} disabled={deleting}>
+                                {deleting ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />} Delete
+                            </button>
+                        </div>
+                    </div>
+                )}
                 {/* Section tabs */}
                 {!fetchError && (
                     <div className="ed-section-tabs">
@@ -528,9 +987,11 @@ export default function EmployeeDetail() {
                 {!fetchError && (
                     <div className="ed-body">
 
-                        {/* OVERVIEW */}
+                        {/* ── OVERVIEW ── */}
                         {activeSection === 'overview' && (
                             <div className="ed-overview-grid">
+
+                                {/* Personal Information */}
                                 <div className="ed-card">
                                     <div className="ed-card-header">
                                         <h3><User size={15} /> Personal Information</h3>
@@ -565,54 +1026,8 @@ export default function EmployeeDetail() {
                                     )}
                                 </div>
 
+                                {/* Recent Activity */}
                                 <div className="ed-card">
-                                    <div className="ed-card-header">
-                                        <h3><Truck size={15} /> Delivery Summary</h3>
-                                    </div>
-                                    {loadingDeliveries ? (
-                                        <div className="ed-field-list">
-                                            {[1, 2, 3, 4].map(i => (
-                                                <div key={i} className="ed-info-row">
-                                                    <Skeleton w="40%" /><Skeleton w="30%" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="ed-summary-grid">
-                                                {[
-                                                    { label: 'Total', value: totalDeliveries, cls: '' },
-                                                    { label: 'Delivered', value: completedDeliveries, cls: 'green' },
-                                                    { label: 'In Transit', value: inTransit, cls: 'amber' },
-                                                    { label: 'Failed', value: failedDeliveries, cls: 'red' },
-                                                ].map(({ label, value, cls }) => (
-                                                    <div key={label} className="ed-summary-chip">
-                                                        <span className={`ed-summary-val ${cls}`}>{value}</span>
-                                                        <span className="ed-summary-lbl">{label}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            {totalDeliveries > 0 && (
-                                                <div style={{ marginTop: 16 }}>
-                                                    <div className="ed-perf-row">
-                                                        <span className="ed-perf-label">Completion Rate</span>
-                                                        <span className="ed-perf-pct">
-                                                            {Math.round(completedDeliveries / totalDeliveries * 100)}%
-                                                        </span>
-                                                    </div>
-                                                    <div className="ed-progress-bar">
-                                                        <div
-                                                            className="ed-progress-fill green"
-                                                            style={{ width: `${Math.round(completedDeliveries / totalDeliveries * 100)}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-
-                                <div className="ed-card ed-card-full">
                                     <div className="ed-card-header">
                                         <h3><Clock size={15} /> Recent Activity</h3>
                                         <button className="ed-view-all" onClick={() => setActiveSection('activity')}>View all →</button>
@@ -642,7 +1057,7 @@ export default function EmployeeDetail() {
                             </div>
                         )}
 
-                        {/* DELIVERIES */}
+                        {/* ── DELIVERY HISTORY ── */}
                         {activeSection === 'deliveries' && (
                             <div className="ed-card">
                                 <div className="ed-card-header">
@@ -658,12 +1073,12 @@ export default function EmployeeDetail() {
                                         <table className="ed-table">
                                             <thead>
                                                 <tr>
-                                                    <th>TRACKING #</th>
-                                                    <th>RECIPIENT</th>
-                                                    <th>DESTINATION</th>
-                                                    <th>STATUS</th>
-                                                    <th>ASSIGNED</th>
-                                                    <th>DELIVERED</th>
+                                                    <th>Tracking #</th>
+                                                    <th>Recipient</th>
+                                                    <th>Destination</th>
+                                                    <th>Status</th>
+                                                    <th>Assigned</th>
+                                                    <th>Delivered</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -688,7 +1103,7 @@ export default function EmployeeDetail() {
                             </div>
                         )}
 
-                        {/* ACTIVITY LOGS */}
+                        {/* ── ACTIVITY LOGS ── */}
                         {activeSection === 'activity' && (
                             <div className="ed-card">
                                 <div className="ed-card-header">
@@ -719,6 +1134,7 @@ export default function EmployeeDetail() {
                                 )}
                             </div>
                         )}
+
                     </div>
                 )}
             </main>
@@ -726,8 +1142,13 @@ export default function EmployeeDetail() {
             {showEdit && profile && (
                 <EditProfileModal
                     profile={profile}
-                    onClose={() => setShowEdit(false)}
-                    onSaved={updated => { setProfile(updated); setShowEdit(false); }}
+                    onClose={() =>
+                        setShowEdit(false)
+                    }
+                    onSaved={updated => {
+                        setProfile(updated);
+                        setShowEdit(false);
+                    }}
                 />
             )}
         </div>
