@@ -261,7 +261,7 @@ function EmployeeDetailModal({ employee, onClose, onUpdated }: EmployeeDetailMod
         try {
             const token = localStorage.getItem('authToken');
             const updateRes = await fetch(
-                `/api/systemadmin/update-user?employeeNumber=${encodeURIComponent(employee.employeeNumber)}`,
+                `/api/profile/update-profile?employeeNumber=${encodeURIComponent(employee.employeeNumber)}`,
                 {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

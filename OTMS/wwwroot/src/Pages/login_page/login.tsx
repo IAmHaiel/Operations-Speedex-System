@@ -10,7 +10,8 @@ type UserRole =
     | 'System Admin'
     | 'Operation Admin'
     | 'OpAdmin'
-    | 'Employee';
+    | 'Coordinator'
+    | 'Encoder';
 
 interface LoginResponse {
     accessToken: string;
@@ -29,7 +30,8 @@ const normalizeRole = (role: string): UserRole | '' => {
         operationadmin: 'Operation Admin',
         'operation admin': 'Operation Admin',
         opadmin: 'OpAdmin',
-        employee: 'Employee',
+        coordinator: 'Coordinator',
+        encoder: 'Encoder',
     };
     return map[role.toLowerCase()] ?? '';
 };
@@ -39,7 +41,8 @@ const dashboardRoutes: Record<UserRole, string> = {
     'System Admin': '/SystemAdmin_Dashboard',
     'Operation Admin': '/OpAdmin_Dashboard',
     OpAdmin: '/OpAdmin_Dashboard',
-    Employee: '/OpEmployee_Dashboard',
+    Coordinator: '/OpEmployee_Dashboard',
+    Encoder: '/OpEmployee_Dashboard',
 };
 
 /* ══════════════════════════════════════════

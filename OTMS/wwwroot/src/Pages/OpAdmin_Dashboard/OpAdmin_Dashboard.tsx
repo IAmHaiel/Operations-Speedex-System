@@ -12,10 +12,17 @@ import {
     Pencil,
     Trash2,
     X,
+    Hash,
+    Eye,
+    EyeOff,
+    Shield,
+    Phone,
+    Lock,
     ChevronRight,
     Save,
     Loader2,
     Users,
+    Search,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './OpAdmin_Dashboard.css';
@@ -25,7 +32,7 @@ import { useNavigate } from 'react-router-dom';
 
 type Priority = 'high' | 'medium' | 'low';
 type TaskStatus = 'pending' | 'in-progress' | 'completed' | 'overdue';
-type NavTab = 'dashboard' | 'tasks' | 'team' | 'reports';
+type NavTab = 'dashboard' | 'tasks' | 'team' | 'reports' | 'profile';
 
 interface TeamMember {
     id: string;
@@ -81,6 +88,7 @@ const NAV_ITEMS = [
     { tab: 'tasks' as NavTab, icon: Package, label: 'Tasks' },
     { tab: 'team' as NavTab, icon: Users, label: 'Team' },
     { tab: 'reports' as NavTab, icon: BarChart3, label: 'Reports' },
+    { tab: 'profile' as NavTab, icon: UserCircle2, label: 'Profile' },
 ];
 
 const EMPTY_TASK: Omit<Task, 'id'> = {
@@ -395,7 +403,6 @@ const DashboardTab: React.FC<{ tasks: Task[]; onView: (id: number) => void; onNe
 
                 {/* Bottom Row */}
                 <div className="dashboard-bottom-row">
-                    {/* Delivery Performance Chart */}
                     <div className="card" style={{ flex: 2 }}>
                         <div className="card-header">
                             <h3>Delivery Performance</h3>
@@ -420,48 +427,53 @@ const DashboardTab: React.FC<{ tasks: Task[]; onView: (id: number) => void; onNe
 
 // ─── Tasks Tab ────────────────────────────────────────────────────────────────
 
-const TasksTab: React.FC<{ tasks: Task[]; onView: (id: number) => void; onEdit: (id: number) => void }> =
-    ({ tasks, onView, onEdit }) => {
-        const [filterStatus, setFilterStatus] = useState('');
-        const [filterPriority, setFilterPriority] = useState('');
-        const [filterAssignee, setFilterAssignee] = useState('');
+const TasksTab: React.FC<{
+    tasks: Task[];
+    searchQuery: string;
+    onView: (id: number) => void;
+    onEdit: (id: number) => void;
+}> = ({ tasks, searchQuery, onView, onEdit }) => {
+    const [filterStatus, setFilterStatus] = useState('');
+    const [filterPriority, setFilterPriority] = useState('');
+    const [filterAssignee, setFilterAssignee] = useState('');
 
-        const filtered = tasks.filter(t =>
-            (!filterStatus || t.status === filterStatus) &&
-            (!filterPriority || t.priority === filterPriority) &&
-            (!filterAssignee || t.assigneeId === filterAssignee)
-        );
+    const filtered = tasks.filter(t =>
+        (!filterStatus || t.status === filterStatus) &&
+        (!filterPriority || t.priority === filterPriority) &&
+        (!filterAssignee || t.assigneeId === filterAssignee) &&
+        (!searchQuery || t.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
 
-        return (
-            <div className="dashboard-content">
-                <div className="filter-bar">
-                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                        <option value="">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                        <option value="overdue">Overdue</option>
-                    </select>
-                    <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
-                        <option value="">All Priorities</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                    </select>
-                    <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)}>
-                        <option value="">All Assignees</option>
-                        {TEAM_MEMBERS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                    </select>
-                </div>
-                <div className="card">
-                    {filtered.length === 0
-                        ? <div className="empty-state"><Package size={20} /><p>No tasks match filters</p></div>
-                        : filtered.map(t => <TaskRow key={t.id} task={t} onView={onView} onEdit={onEdit} showEditBtn />)
-                    }
-                </div>
+    return (
+        <div className="dashboard-content">
+            <div className="filter-bar">
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="overdue">Overdue</option>
+                </select>
+                <select value={filterPriority} onChange={e => setFilterPriority(e.target.value)}>
+                    <option value="">All Priorities</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                </select>
+                <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)}>
+                    <option value="">All Assignees</option>
+                    {TEAM_MEMBERS.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
             </div>
-        );
-    };
+            <div className="card">
+                {filtered.length === 0
+                    ? <div className="empty-state"><Package size={20} /><p>No tasks match filters</p></div>
+                    : filtered.map(t => <TaskRow key={t.id} task={t} onView={onView} onEdit={onEdit} showEditBtn />)
+                }
+            </div>
+        </div>
+    );
+};
 
 // ─── Team Tab ─────────────────────────────────────────────────────────────────
 
@@ -641,6 +653,402 @@ const ReportsTab: React.FC<{ tasks: Task[] }> = ({ tasks }) => {
     );
 };
 
+// ─── Profile Tab ──────────────────────────────────────────────────────────────
+
+function ProfileTab() {
+    const employeeId = localStorage.getItem('employeeId') ?? '';
+    const employeeName = localStorage.getItem('employeeName') ?? '';
+    const employeeContact = localStorage.getItem('contactNumber') ?? '';
+
+    const [editingProfile, setEditingProfile] = useState(false);
+    const [profileForm, setProfileForm] = useState({
+        employeeName: employeeName,
+        contactNumber: employeeContact,
+    });
+    const [profileError, setProfileError] = useState('');
+    const [profileSaving, setProfileSaving] = useState(false);
+    const [profileSuccess, setProfileSuccess] = useState(false);
+
+    const [editingPassword, setEditingPassword] = useState(false);
+    const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+    const [pwError, setPwError] = useState('');
+    const [pwSaving, setPwSaving] = useState(false);
+    const [showCurrent, setShowCurrent] = useState(false);
+    const [showNext, setShowNext] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+
+    const handleProfileChange = (key: keyof typeof profileForm) =>
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            setProfileForm(prev => ({ ...prev, [key]: e.target.value }));
+            setProfileError('');
+            setProfileSuccess(false);
+        };
+
+    const handleProfileSave = async () => {
+        if (!profileForm.employeeName.trim()) { setProfileError('Full name is required.'); return; }
+        if (profileForm.contactNumber && !/^[0-9+\-\s()]{7,20}$/.test(profileForm.contactNumber.trim())) {
+            setProfileError('Enter a valid contact number.'); return;
+        }
+        setProfileSaving(true);
+        setProfileError('');
+        try {
+            const token = localStorage.getItem('authToken');
+            const res = await fetch(
+                `/api/profile/update-profile?employeeNumber=${encodeURIComponent(employeeId)}`,
+                {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({
+                        employeeNumber: employeeId,
+                        employeeName: profileForm.employeeName.trim(),
+                        contactNumber: profileForm.contactNumber.trim(),
+                    }),
+                }
+            );
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Profile update failed.');
+            }
+            localStorage.setItem('employeeName', profileForm.employeeName.trim());
+            localStorage.setItem('contactNumber', profileForm.contactNumber.trim());
+            setProfileSuccess(true);
+            setEditingProfile(false);
+        } catch (err: any) {
+            setProfileError(err.message ?? 'Something went wrong.');
+        } finally {
+            setProfileSaving(false);
+        }
+    };
+
+    const handlePwChange = (key: keyof typeof pwForm) =>
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            setPwForm(prev => ({ ...prev, [key]: e.target.value }));
+            setPwError('');
+        };
+
+    const handlePwSave = async () => {
+        if (!pwForm.current) { setPwError('Current password is required.'); return; }
+        if (pwForm.next.length < 6) { setPwError('New password must be at least 6 characters.'); return; }
+        if (pwForm.next !== pwForm.confirm) { setPwError('Passwords do not match.'); return; }
+        setPwSaving(true);
+        try {
+            const token = localStorage.getItem('authToken');
+            const res = await fetch('/api/profile/change-password', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Password update failed.');
+            }
+            alert('Password changed successfully!');
+            setEditingPassword(false);
+            setPwForm({ current: '', next: '', confirm: '' });
+        } catch (err: any) {
+            setPwError(err.message ?? 'Something went wrong.');
+        } finally {
+            setPwSaving(false);
+        }
+    };
+
+    const displayName = profileForm.employeeName || employeeName || 'System Admin';
+    const displayContact = profileForm.contactNumber || employeeContact;
+
+    return (
+        <div className="dashboard-content">
+            <div className="dashboard-grid" style={{ gridTemplateColumns: '1fr 1.5fr' }}>
+
+                {/* ── Profile Card ── */}
+                <div className="card">
+                    <div className="card-header">
+                        <h3>My Profile</h3>
+                        {!editingProfile && (
+                            <button
+                                className="btn btn-primary"
+                                style={{ fontSize: 12, padding: '6px 14px', width: 'fit-content', flexShrink: 0, marginLeft: 'auto' }}
+                                onClick={() => { setEditingProfile(true); setProfileSuccess(false); }}
+                            >
+                                <Pencil size={12} /> Edit Profile
+                            </button>
+                        )}
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0 16px', gap: 10 }}>
+                        <div
+                            className="avatar-circle large"
+                            style={{
+                                width: 72, height: 72, fontSize: 28,
+                                background: 'linear-gradient(135deg, #4318ff, #6a5cff)',
+                                boxShadow: '0 8px 20px rgba(67,24,255,0.28)',
+                            }}
+                        >
+                            {displayName.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                            <h4 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: 'var(--text-primary)' }}>{displayName}</h4>
+                            <span className="status-badge active" style={{ marginTop: 6, display: 'inline-block' }}>Active</span>
+                        </div>
+                    </div>
+
+                    {profileSuccess && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(5,205,153,0.1)', border: '1px solid rgba(5,205,153,0.25)', borderRadius: 10, marginBottom: 12, fontSize: 13, color: '#05cd99', fontWeight: 600 }}>
+                            <CheckCircle2 size={14} /> Profile updated successfully!
+                        </div>
+                    )}
+
+                    {editingProfile ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            {profileError && (
+                                <div className="form-api-error"><AlertCircle size={14} /><span>{profileError}</span></div>
+                            )}
+                            <div className="field">
+                                <label>Full Name</label>
+                                <input
+                                    type="text"
+                                    value={profileForm.employeeName}
+                                    onChange={handleProfileChange('employeeName')}
+                                    placeholder="Enter full name"
+                                />
+                            </div>
+                            <div className="field">
+                                <label>Contact Number</label>
+                                <input
+                                    type="tel"
+                                    value={profileForm.contactNumber}
+                                    onChange={handleProfileChange('contactNumber')}
+                                    placeholder="e.g. +63 917 000 0000"
+                                />
+                            </div>
+                            <div className="detail-grid" style={{ marginTop: 4 }}>
+                                <div className="detail-item">
+                                    <span className="detail-label">Employee ID</span>
+                                    <span className="detail-value">{employeeId || '—'}</span>
+                                </div>
+                                <div className="detail-item">
+                                    <span className="detail-label">Role</span>
+                                    <span className="detail-value">System Admin</span>
+                                </div>
+                            </div>
+                            <div className="modal-actions" style={{ padding: '4px 0 0' }}>
+                                <button
+                                    className="btn"
+                                    onClick={() => {
+                                        setEditingProfile(false);
+                                        setProfileError('');
+                                        setProfileForm({ employeeName: employeeName, contactNumber: employeeContact });
+                                    }}
+                                    disabled={profileSaving}
+                                >
+                                    Cancel
+                                </button>
+                                <button className="btn btn-primary" onClick={handleProfileSave} disabled={profileSaving}>
+                                    {profileSaving ? <><Loader2 size={13} className="spin" /> Saving…</> : <><Save size={13} /> Save Changes</>}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="detail-grid" style={{ marginTop: 4 }}>
+                            <div className="detail-item">
+                                <span className="detail-label"><Hash size={11} style={{ display: 'inline', marginRight: 4 }} />Employee ID</span>
+                                <span className="detail-value">{employeeId || '—'}</span>
+                            </div>
+                            <div className="detail-item">
+                                <span className="detail-label"><UserCircle2 size={11} style={{ display: 'inline', marginRight: 4 }} />Full Name</span>
+                                <span className="detail-value">{displayName}</span>
+                            </div>
+                            <div className="detail-item">
+                                <span className="detail-label"><Shield size={11} style={{ display: 'inline', marginRight: 4 }} />Role</span>
+                                <span className="detail-value">System Admin</span>
+                            </div>
+                            <div className="detail-item">
+                                <span className="detail-label"><Phone size={11} style={{ display: 'inline', marginRight: 4 }} />Contact</span>
+                                <span className="detail-value">{displayContact || '—'}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* ── Security Card ── */}
+                <div className="card">
+                    <div className="card-header">
+                        <h3>Security Settings</h3>
+                        {!editingPassword && (
+                            <button
+                                className="btn btn-primary"
+                                style={{ fontSize: 12, padding: '6px 14px', width: 'fit-content', flexShrink: 0, marginLeft: 'auto' }}
+                                onClick={() => setEditingPassword(true)}
+                            >
+                                <Lock size={12} /> Change Password
+                            </button>
+                        )}
+                    </div>
+
+                    {!editingPassword ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '4px 0' }}>
+                            <div className="system-status-item" style={{ cursor: 'default' }}>
+                                <div className="system-icon bg-success"><CheckCircle2 size={16} /></div>
+                                <div className="system-info">
+                                    <span className="system-name">Password</span>
+                                    <span className="system-detail">Last updated recently</span>
+                                </div>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: '#05cd99', background: 'rgba(5,205,153,0.12)', padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>Secure</span>
+                            </div>
+                            <div style={{ height: 1, background: 'var(--border)' }} />
+                            <div className="system-status-item" style={{ cursor: 'default' }}>
+                                <div className="system-icon bg-primary"><Shield size={16} /></div>
+                                <div className="system-info">
+                                    <span className="system-name">Role Permissions</span>
+                                    <span className="system-detail">Full system access granted</span>
+                                </div>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)', background: 'rgba(67,24,255,0.1)', padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>Admin</span>
+                            </div>
+                            <div style={{ height: 1, background: 'var(--border)' }} />
+                            <div className="system-status-item" style={{ cursor: 'default' }}>
+                                <div className="system-icon bg-warning"><AlertCircle size={16} /></div>
+                                <div className="system-info">
+                                    <span className="system-name">Active Session</span>
+                                    <span className="system-detail">Logged in on this device</span>
+                                </div>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: '#ffb547', background: 'rgba(255,181,71,0.15)', padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>Live</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="modal-form" style={{ padding: '4px 0 0' }}>
+                            {pwError && (
+                                <div className="form-api-error" style={{ marginBottom: 8 }}>
+                                    <AlertCircle size={14} /><span>{pwError}</span>
+                                </div>
+                            )}
+                            <div className="field">
+                                <label>Current Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showCurrent ? 'text' : 'password'}
+                                        value={pwForm.current}
+                                        onChange={handlePwChange('current')}
+                                        placeholder="Enter current password"
+                                        style={{ paddingRight: 40, width: '100%' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCurrent(p => !p)}
+                                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
+                                        tabIndex={-1}
+                                    >
+                                        {showCurrent ? <EyeOff size={15} /> : <Eye size={15} />}
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="field">
+                                <label>New Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showNext ? 'text' : 'password'}
+                                        value={pwForm.next}
+                                        onChange={handlePwChange('next')}
+                                        placeholder="At least 6 characters"
+                                        style={{ paddingRight: 40, width: '100%' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNext(p => !p)}
+                                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
+                                        tabIndex={-1}
+                                    >
+                                        {showNext ? <EyeOff size={15} /> : <Eye size={15} />}
+                                    </button>
+                                </div>
+                                {pwForm.next.length > 0 && (
+                                    <div style={{ marginTop: 6 }}>
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            {[1, 2, 3].map(level => (
+                                                <div key={level} style={{
+                                                    flex: 1, height: 4, borderRadius: 2,
+                                                    background: pwForm.next.length >= level * 4
+                                                        ? level === 1 ? '#ee5d50' : level === 2 ? '#ffb547' : '#05cd99'
+                                                        : '#e9edf7',
+                                                    transition: 'background 0.2s',
+                                                }} />
+                                            ))}
+                                        </div>
+                                        <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 3, display: 'block' }}>
+                                            {pwForm.next.length < 4 ? 'Weak' : pwForm.next.length < 8 ? 'Fair' : 'Strong'}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="field">
+                                <label>Confirm New Password</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showConfirm ? 'text' : 'password'}
+                                        value={pwForm.confirm}
+                                        onChange={handlePwChange('confirm')}
+                                        placeholder="Re-enter new password"
+                                        style={{ paddingRight: 40, width: '100%' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirm(p => !p)}
+                                        style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
+                                        tabIndex={-1}
+                                    >
+                                        {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+                                    </button>
+                                </div>
+                                {pwForm.confirm.length > 0 && pwForm.next !== pwForm.confirm && (
+                                    <span style={{ fontSize: 11, color: 'var(--danger)', marginTop: 3, display: 'block' }}>Passwords do not match</span>
+                                )}
+                                {pwForm.confirm.length > 0 && pwForm.next === pwForm.confirm && (
+                                    <span style={{ fontSize: 11, color: '#05cd99', marginTop: 3, display: 'block' }}>✓ Passwords match</span>
+                                )}
+                            </div>
+                            <div className="modal-actions" style={{ padding: '4px 0 0' }}>
+                                <button
+                                    className="btn"
+                                    onClick={() => {
+                                        setEditingPassword(false);
+                                        setPwError('');
+                                        setPwForm({ current: '', next: '', confirm: '' });
+                                    }}
+                                    disabled={pwSaving}
+                                >
+                                    Cancel
+                                </button>
+                                <button className="btn btn-primary" onClick={handlePwSave} disabled={pwSaving}>
+                                    {pwSaving ? <><Loader2 size={13} className="spin" /> Saving…</> : <><Save size={13} /> Update Password</>}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* ── Account Overview ── */}
+            <div className="card">
+                <div className="card-header"><h3>Account Overview</h3></div>
+                <div className="system-status-list">
+                    {[
+                        { icon: Users, bg: 'bg-primary', name: 'Manage Employees', detail: 'Register, edit, and deactivate accounts' },
+                        { icon: Truck, bg: 'bg-warning', name: 'Delivery Oversight', detail: 'View and manage all deliveries' },
+                        { icon: BarChart3, bg: 'bg-success', name: 'Analytics & Reports', detail: 'Access system-wide reports' },
+                    ].map(({ icon: Icon, bg, name, detail }) => (
+                        <div key={name} className="system-status-item">
+                            <div className={`system-icon ${bg}`}><Icon size={16} /></div>
+                            <div className="system-info">
+                                <span className="system-name">{name}</span>
+                                <span className="system-detail">{detail}</span>
+                            </div>
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#2b3674', background: '#eef2ff', padding: '4px 10px', borderRadius: 999, whiteSpace: 'nowrap' }}>Full Access</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Root Component ───────────────────────────────────────────────────────────
 
 export default function OpsAdminDashboard() {
@@ -651,6 +1059,7 @@ export default function OpsAdminDashboard() {
     const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
     const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
     const [nextId, setNextId] = useState(INITIAL_TASKS.length + 1);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Modal state
     const [showNew, setShowNew] = useState(false);
@@ -685,6 +1094,7 @@ export default function OpsAdminDashboard() {
         tasks: 'Task Management',
         team: 'Team Management',
         reports: 'Performance Reports',
+        profile: 'My Profile',
     };
 
     return (
@@ -705,8 +1115,6 @@ export default function OpsAdminDashboard() {
                             <span>{label}</span>
                         </div>
                     ))}
-                    <div className="nav-item"><Truck size={22} /><span>Delivery</span></div>
-                    <div className="nav-item"><UserCircle2 size={22} /><span>Profile</span></div>
                 </nav>
 
                 <div className="sidebar-footer">
@@ -738,12 +1146,23 @@ export default function OpsAdminDashboard() {
                             })}
                         </p>
                     </div>
-                    <div className="header-actions">
-                        <button className="quick-action-btn-header" onClick={() => setShowNew(true)}>
-                            <Plus size={18} />
-                            New Task
-                        </button>
-                    </div>
+                    {activeTab !== 'profile' && (
+                        <div className="header-actions">
+                            <div className="header-search">
+                                <Search size={15} />
+                                <input
+                                    type="text"
+                                    placeholder="Search tasks..."
+                                    value={searchQuery}
+                                    onChange={e => setSearchQuery(e.target.value)}
+                                />
+                            </div>
+                            <button className="quick-action-btn-header" onClick={() => setShowNew(true)}>
+                                <Plus size={18} />
+                                New Task
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Tab Content */}
@@ -757,6 +1176,7 @@ export default function OpsAdminDashboard() {
                 {activeTab === 'tasks' && (
                     <TasksTab
                         tasks={tasks}
+                        searchQuery={searchQuery}
                         onView={id => setViewingTask(tasks.find(t => t.id === id) ?? null)}
                         onEdit={id => setEditingTask(tasks.find(t => t.id === id) ?? null)}
                     />
@@ -768,6 +1188,7 @@ export default function OpsAdminDashboard() {
                     />
                 )}
                 {activeTab === 'reports' && <ReportsTab tasks={tasks} />}
+                {activeTab === 'profile' && <ProfileTab />}
             </main>
 
             {/* ── Modals ── */}

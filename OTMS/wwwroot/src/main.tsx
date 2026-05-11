@@ -55,7 +55,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                     </PrivateRoute>
                 } />
                 <Route path="/OpEmployee_Dashboard" element={
-                    <PrivateRoute allowedRoles={['Employee']}>
+                    <PrivateRoute allowedRoles={['Coordinator', 'Encoder']}>
                         <PasswordChangedGuard>
                             <OpEmployee_Dashboard />
                         </PasswordChangedGuard>
