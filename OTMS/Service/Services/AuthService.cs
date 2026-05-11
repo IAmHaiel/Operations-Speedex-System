@@ -172,7 +172,6 @@ namespace OTMS.Service.Services
                 EmployeeName = employee.EmployeeName ?? string.Empty,
                 ContactNumber = employee.ContactNumber ?? string.Empty,
                 Role = account.Role ?? string.Empty,
-                ContactNumber = employee.ContactNumber ?? string.Empty,
                 GeneratedPassword = generatedUserPassword
             };
         }
@@ -181,11 +180,7 @@ namespace OTMS.Service.Services
 
         private static string ContactNumberFormatter(string contactNumber)
         {
-<<<<<<< HEAD
-            if (string.IsNullOrEmpty(contactNumber))
-=======
             if(string.IsNullOrEmpty(contactNumber))
->>>>>>> sprint-2
             {
                 return contactNumber;
             }
@@ -202,10 +197,7 @@ namespace OTMS.Service.Services
             // Philippines Contact Number Format: 09XX XXX XXXX
             return $"{contactNumber[..4]} {contactNumber.Substring(4, 3)} {contactNumber.Substring(7, 4)}";
         }
-<<<<<<< HEAD
-=======
 
->>>>>>> sprint-2
         private async Task<TokenResponseDTO> CreateTokenResponse(Employee employee)
         {
 
