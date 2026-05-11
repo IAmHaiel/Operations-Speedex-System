@@ -4,6 +4,7 @@ using OTMS.Data;
 using OTMS.Entities.DTOs.Profile;
 using OTMS.Entities.DTOs.Profile.Responses;
 using OTMS.Entities.Models;
+using OTMS.Service.Helper;
 using OTMS.Service.Interfaces;
 using System.Security.Claims;
 
@@ -105,6 +106,9 @@ namespace OTMS.Service.Services
 
             if (request.ContactNumber == "string" || String.IsNullOrEmpty(request.ContactNumber))
                 request.ContactNumber = profile.ContactNumber;
+
+            // Format Profile Contact Number
+            request.ContactNumber = GeneralHelper.ContactNumberFormatter(request.ContactNumber);
 
             // Save the updated information to the database
             profile.EmployeeName = request.EmployeeName;
