@@ -24,6 +24,10 @@ import {
     Lock,
     Eye,
     EyeOff,
+    Clock,
+    CalendarRange,
+    CalendarDays,
+    Filter,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './SystemAdmin_Dashboard.css';
@@ -61,6 +65,24 @@ interface RecentEmployee {
     contactNumber: string;
     role: string;
     accountStatus: string;
+}
+
+type LeaveType = 'vacation' | 'sick' | 'emergency' | 'personal' | 'maternity' | 'other';
+type LeaveStatus = 'pending' | 'approved' | 'declined';
+
+interface LeaveRequest {
+    id: number;
+    employeeNumber: string;
+    employeeName: string;
+    role: string;
+    leaveType: LeaveType;
+    startDate: string;
+    endDate: string;
+    reason: string;
+    status: LeaveStatus;
+    submittedAt: string;
+    reviewedBy?: string;
+    reviewNote?: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -115,6 +137,30 @@ function validate(form: FormState): FieldError {
 
 const toBackendRole = (role: string) => role.replace(/\s+/g, '');
 const toDisplayRole = (role: string) => role.replace(/([a-z])([A-Z])/g, '$1 $2');
+
+
+const fmtDate = (d: string): string => {
+    if (!d) return '—';
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const calcDays = (start: string, end: string): number =>
+    Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86400000) + 1;
+
+const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
+    vacation: 'Vacation',
+    sick: 'Sick Leave',
+    emergency: 'Emergency',
+    personal: 'Personal',
+    maternity: 'Maternity/Paternity',
+    other: 'Other',
+};
+
+const LEAVE_STATUS_META: Record<LeaveStatus, { label: string; cls: string; icon: React.ReactNode }> = {
+    pending: { label: 'Pending', cls: 'badge-amber', icon: <Clock size={12} /> },
+    approved: { label: 'Approved', cls: 'badge-green', icon: <CheckCircle2 size={12} /> },
+    declined: { label: 'Declined', cls: 'badge-red', icon: <X size={12} /> },
+};
 
 // ─── Add Employee Modal ───────────────────────────────────────────────────────
 
@@ -417,6 +463,127 @@ function EmployeeDetailModal({ employee, onClose, onUpdated }: EmployeeDetailMod
     );
 }
 
+// ─── Leave Action Modal ────────────────────────────────────────────────────────
+
+interface LeaveActionModalProps {
+    request: LeaveRequest;
+    action: 'approve' | 'decline';
+    onClose: () => void;
+    onConfirm: (id: number, action: 'approve' | 'decline', note: string) => void;
+}
+
+function LeaveActionModal({ request, action, onClose, onConfirm }: LeaveActionModalProps) {
+    const [note, setNote] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const isApprove = action === 'approve';
+    const days = calcDays(request.startDate, request.endDate);
+
+    const handleConfirm = async () => {
+        setSubmitting(true);
+        try {
+            const token = localStorage.getItem('authToken');
+            const endpoint = isApprove
+                ? '/api/leave/approve'
+                : '/api/leave/decline';
+            const res = await fetch(endpoint, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ leaveId: request.id, reviewNote: note.trim() }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error((err as any).message || `Failed to ${action} leave request.`);
+            }
+            onConfirm(request.id, action, note.trim());
+            onClose();
+        } catch (err: any) {
+            alert(err.message ?? 'Something went wrong.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+                <div className="modal-header">
+                    <div>
+                        <h3>{isApprove ? 'Approve Leave Request' : 'Decline Leave Request'}</h3>
+                        <p className="modal-subtitle">
+                            {isApprove
+                                ? 'Confirm approval for this leave request.'
+                                : 'Provide a reason for declining this request.'}
+                        </p>
+                    </div>
+                    <button className="icon-btn" onClick={onClose}><X size={16} /></button>
+                </div>
+
+                {/* Request Summary */}
+                <div style={{
+                    background: 'var(--bg-secondary, #f8f9fc)',
+                    borderRadius: 10,
+                    padding: '12px 14px',
+                    marginBottom: 16,
+                    border: '1px solid var(--border)',
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                        <div className="emp-avatar" style={{ flexShrink: 0 }}>
+                            {request.employeeName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>{request.employeeName}</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{toDisplayRole(request.role)}</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 12px', fontSize: 12 }}>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>Type</span><br /><strong>{LEAVE_TYPE_LABELS[request.leaveType]}</strong></div>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>Duration</span><br /><strong>{days} {days === 1 ? 'day' : 'days'}</strong></div>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>From</span><br /><strong>{fmtDate(request.startDate)}</strong></div>
+                        <div><span style={{ color: 'var(--text-secondary)' }}>To</span><br /><strong>{fmtDate(request.endDate)}</strong></div>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 12 }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Reason</span><br />
+                        <span style={{ color: 'var(--text-primary)' }}>{request.reason}</span>
+                    </div>
+                </div>
+
+                {/* Note Field */}
+                <div className="field">
+                    <label>{isApprove ? 'Note (optional)' : 'Reason for declining'}</label>
+                    <textarea
+                        rows={3}
+                        maxLength={300}
+                        placeholder={isApprove
+                            ? 'Add a message for the employee (optional)…'
+                            : 'Explain why this request is being declined…'}
+                        value={note}
+                        onChange={e => setNote(e.target.value)}
+                        style={{ width: '100%', resize: 'vertical', borderRadius: 8, border: '1px solid var(--border)', padding: '8px 10px', fontSize: 13, fontFamily: 'inherit', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                    />
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'right', marginTop: 3 }}>{note.length} / 300</div>
+                </div>
+
+                <div className="modal-actions">
+                    <button className="btn" onClick={onClose} disabled={submitting}>Cancel</button>
+                    <button
+                        className={`btn ${isApprove ? 'btn-primary' : 'btn-danger'}`}
+                        onClick={handleConfirm}
+                        disabled={submitting || (!isApprove && !note.trim())}
+                    >
+                        {submitting
+                            ? <><Loader2 size={13} className="spin" /> Processing…</>
+                            : isApprove
+                                ? <><CheckCircle2 size={13} /> Approve</>
+                                : <><X size={13} /> Decline</>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
 // ─── Dashboard Tab ────────────────────────────────────────────────────────────
 
 interface DashboardTabProps {
@@ -518,6 +685,10 @@ function DashboardTab({ employees, recentEmployees, activityLogs, loading, onSel
 
 // ─── Manage Employees Tab (with pagination) ───────────────────────────────────
 
+// ─── Manage Employees Tab (with Leave subtab) ─────────────────────────────────
+
+type EmployeeSubTab = 'employees' | 'leave';
+
 interface ManageEmployeesTabProps {
     employees: RecentEmployee[];
     loading: boolean;
@@ -526,101 +697,191 @@ interface ManageEmployeesTabProps {
 }
 
 function ManageEmployeesTab({ employees, loading, onSelectEmployee, onAddEmployee }: ManageEmployeesTabProps) {
+    const [subTab, setSubTab] = useState<EmployeeSubTab>('employees');
+
+    // ── Employee list state ──
     const [search, setSearch] = useState('');
     const [filterRole, setFilterRole] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
 
-    const filtered = employees.filter(emp => {
-        const matchSearch =
-            !search ||
-            emp.employeeName.toLowerCase().includes(search.toLowerCase()) ||
-            emp.employeeNumber.toLowerCase().includes(search.toLowerCase());
+    // ── Leave state ──
+    const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
+    const [leaveLoading, setLeaveLoading] = useState(true);
+    const [leaveFilterStatus, setLeaveFilterStatus] = useState<'all' | LeaveStatus>('pending');
+    const [leaveFilterRole, setLeaveFilterRole] = useState('');
+    const [leaveSearch, setLeaveSearch] = useState('');
+    const [leavePage, setLeavePage] = useState(1);
+    const [actionModal, setActionModal] = useState<{ request: LeaveRequest; action: 'approve' | 'decline' } | null>(null);
+    const [detailModal, setDetailModal] = useState<LeaveRequest | null>(null);
+
+    const adminName = localStorage.getItem('employeeName') ?? 'System Admin';
+    const PAGE_SIZE = 7;
+
+    // Fetch leave requests once
+    useEffect(() => {
+        const token = localStorage.getItem('authToken');
+        fetch('/api/leave/all', { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+            .then((data: any[]) => {
+                setLeaveRequests(Array.isArray(data) ? data.map(r => ({
+                    id: r.id,
+                    employeeNumber: r.employeeNumber,
+                    employeeName: r.employeeName,
+                    role: r.role ?? '',
+                    leaveType: r.leaveType,
+                    startDate: r.startDate,
+                    endDate: r.endDate,
+                    reason: r.reason,
+                    status: r.status,
+                    submittedAt: r.submittedAt,
+                    reviewedBy: r.reviewedBy,
+                    reviewNote: r.reviewNote,
+                })) : []);
+            })
+            .catch(() => setLeaveRequests([
+                {
+                    id: 1,
+                    employeeNumber: 'EMP-0001',
+                    employeeName: 'Juan dela Cruz',
+                    role: 'OperationTeam',
+                    leaveType: 'vacation',
+                    startDate: '2026-05-28',
+                    endDate: '2026-05-30',
+                    reason: 'Family vacation to Cebu.',
+                    status: 'pending',
+                    submittedAt: '2026-05-24',
+                }
+            ]))
+            .finally(() => setLeaveLoading(false));
+    }, []);
+
+    // ── Employee pagination ──
+    const filteredEmps = employees.filter(emp => {
+        const matchSearch = !search || emp.employeeName.toLowerCase().includes(search.toLowerCase()) || emp.employeeNumber.toLowerCase().includes(search.toLowerCase());
         const matchRole = !filterRole || emp.role === filterRole || toDisplayRole(emp.role) === filterRole;
         const matchStatus = !filterStatus || emp.accountStatus === filterStatus;
         return matchSearch && matchRole && matchStatus;
     });
-
-    // Reset to page 1 when filters change
     useEffect(() => { setCurrentPage(1); }, [search, filterRole, filterStatus]);
+    const empTotalPages = Math.max(1, Math.ceil(filteredEmps.length / PAGE_SIZE));
+    const paginatedEmps = filteredEmps.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
-    const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
-    const paginated = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    // ── Leave pagination ──
+    const filteredLeave = leaveRequests.filter(r => {
+        const matchStatus = leaveFilterStatus === 'all' || r.status === leaveFilterStatus;
+        const matchRole = !leaveFilterRole || r.role === leaveFilterRole || toDisplayRole(r.role) === leaveFilterRole;
+        const matchSearch = !leaveSearch || r.employeeName.toLowerCase().includes(leaveSearch.toLowerCase()) || r.employeeNumber.toLowerCase().includes(leaveSearch.toLowerCase());
+        return matchStatus && matchRole && matchSearch;
+    });
+    useEffect(() => { setLeavePage(1); }, [leaveFilterStatus, leaveFilterRole, leaveSearch]);
+    const sortedLeave = [...filteredLeave].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+    const leaveTotalPages = Math.max(1, Math.ceil(sortedLeave.length / PAGE_SIZE));
+    const paginatedLeave = sortedLeave.slice((leavePage - 1) * PAGE_SIZE, leavePage * PAGE_SIZE);
 
-    const goToPage = (page: number) => {
-        if (page < 1 || page > totalPages) return;
-        setCurrentPage(page);
+    const pendingCount = leaveRequests.filter(r => r.status === 'pending').length;
+
+    const handleLeaveConfirm = (id: number, action: 'approve' | 'decline', note: string) => {
+        setLeaveRequests(prev => prev.map(r =>
+            r.id === id
+                ? { ...r, status: action === 'approve' ? 'approved' : 'declined', reviewedBy: adminName, reviewNote: note || undefined }
+                : r
+        ));
     };
 
-    // Generate page number buttons (max 5 shown)
-    const getPageNumbers = () => {
+    const getPageNumbers = (total: number, current: number) => {
         const pages: (number | '...')[] = [];
-        if (totalPages <= 5) {
-            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        if (total <= 5) {
+            for (let i = 1; i <= total; i++) pages.push(i);
         } else {
             pages.push(1);
-            if (currentPage > 3) pages.push('...');
-            const start = Math.max(2, currentPage - 1);
-            const end = Math.min(totalPages - 1, currentPage + 1);
+            if (current > 3) pages.push('...');
+            const start = Math.max(2, current - 1);
+            const end = Math.min(total - 1, current + 1);
             for (let i = start; i <= end; i++) pages.push(i);
-            if (currentPage < totalPages - 2) pages.push('...');
-            pages.push(totalPages);
+            if (current < total - 2) pages.push('...');
+            pages.push(total);
         }
         return pages;
     };
 
     return (
         <div className="dashboard-content">
+            <div className="card employees-table-card" style={{ minHeight: 520, padding: 0, overflow: 'hidden' }}>
 
-            <div className="card employees-table-card" style={{ minHeight: 520 }}>
-                <div className="card-header">
-                    <h3>All Employees</h3>
-                    <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                        {filtered.length} result{filtered.length !== 1 ? 's' : ''}
-                    </span>
+                {/* ── Subtab Bar ── */}
+                <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', padding: '0 20px' }}>
+                    {([
+                        { key: 'employees' as EmployeeSubTab, label: 'All Employees', icon: <Users size={14} />, badge: undefined },
+                        { key: 'leave' as EmployeeSubTab, label: 'Leave Requests', icon: <CalendarDays size={14} />, badge: pendingCount },
+                    ]).map(({ key, label, icon, badge }) => (
+                        <button
+                            key={key}
+                            onClick={() => setSubTab(key as EmployeeSubTab)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '13px 16px',
+                                fontSize: 13, fontWeight: 500,
+                                border: 'none', background: 'none', cursor: 'pointer',
+                                borderBottom: `2px solid ${subTab === key ? 'var(--primary)' : 'transparent'}`,
+                                color: subTab === key ? 'var(--primary)' : 'var(--text-secondary)',
+                                marginBottom: -1,
+                            }}
+                        >
+                            {icon}
+                            {label}
+                            {badge !== undefined && badge > 0 && (
+                                <span style={{
+                                    background: subTab === key ? 'rgba(67,24,255,0.12)' : 'rgba(255,181,71,0.2)',
+                                    color: subTab === key ? 'var(--primary)' : '#c05c00',
+                                    fontSize: 11, fontWeight: 600,
+                                    padding: '1px 7px', borderRadius: 999,
+                                }}>
+                                    {badge} pending
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="filter-bar">
-                    <div className="search-input-wrap">
-                        <Search size={14} className="search-icon" />
-                        <input
-                            type="text"
-                            placeholder="Search by name or ID…"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            className="search-input"
-                        />
-                    </div>
-                    <select value={filterRole} onChange={e => setFilterRole(e.target.value)}>
-                        <option value="">All Roles</option>
-                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                        <option value="">All Statuses</option>
-                        <option value="Active">Active</option>
-                        <option value="Deactivated">Deactivated</option>
-                    </select>
-                </div>
-
-                <div className="data-table-wrap">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>NAME</th>
-                                    <th>EMPLOYEE ID</th>
-                                    <th>ROLE</th>
-                                    <th>CONTACT</th>
-                                    <th>STATUS</th>
-                                    <th>ACTION</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {loading ? (
-                                    <tr><td colSpan={6}><div className="empty-state"><Loader2 size={20} className="spin" /><p>Loading employees…</p></div></td></tr>
-                                ) : paginated.length === 0 ? (
-                                    <tr><td colSpan={6}><div className="empty-state"><Package size={20} /><p>No employees match your filters</p></div></td></tr>
-                                ) : (
-                                    paginated.map(emp => (
+                {/* ══ ALL EMPLOYEES PANE ══ */}
+                {subTab === 'employees' && (
+                    <>
+                        <div style={{ padding: '16px 20px 0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                    {filteredEmps.length} result{filteredEmps.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <div className="filter-bar">
+                                <div className="search-input-wrap">
+                                    <Search size={14} className="search-icon" />
+                                    <input type="text" placeholder="Search by name or ID…" value={search} onChange={e => setSearch(e.target.value)} className="search-input" />
+                                </div>
+                                <select value={filterRole} onChange={e => setFilterRole(e.target.value)}>
+                                    <option value="">All Roles</option>
+                                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                                    <option value="">All Statuses</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Deactivated">Deactivated</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="data-table-wrap">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>NAME</th><th>EMPLOYEE NO</th><th>ROLE</th><th>CONTACT</th><th>STATUS</th><th>ACTION</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {loading ? (
+                                        <tr><td colSpan={6}><div className="empty-state"><Loader2 size={20} className="spin" /><p>Loading employees…</p></div></td></tr>
+                                    ) : paginatedEmps.length === 0 ? (
+                                        <tr><td colSpan={6}><div className="empty-state"><Package size={20} /><p>No employees match your filters</p></div></td></tr>
+                                    ) : paginatedEmps.map(emp => (
                                         <tr key={emp.employeeNumber} className="clickable-row" onClick={() => onSelectEmployee(emp)}>
                                             <td>
                                                 <div className="emp-name-cell">
@@ -637,59 +898,205 @@ function ManageEmployeesTab({ employees, loading, onSelectEmployee, onAddEmploye
                                                 </span>
                                             </td>
                                             <td>
-                                                <button
-                                                    className="btn btn-xs"
-                                                    onClick={e => { e.stopPropagation(); onSelectEmployee(emp); }}
-                                                >
+                                                <button className="btn btn-xs" onClick={e => { e.stopPropagation(); onSelectEmployee(emp); }}>
                                                     <Pencil size={11} /> Edit
                                                 </button>
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                    </table>
-                </div>
-                
-
-                {/* ── Pagination ── */}
-                {!loading && filtered.length > 0 && (
-                    <div className="pagination-bar">
-                        <span className="pagination-info">
-                            Showing {Math.min((currentPage - 1) * ITEMS_PER_PAGE + 1, filtered.length)}–{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} of {filtered.length}
-                        </span>
-                        <div className="pagination-controls">
-                            <button
-                                className="page-btn page-btn-nav"
-                                onClick={() => goToPage(currentPage - 1)}
-                                disabled={currentPage === 1}
-                                aria-label="Previous page"
-                            >
-                                <ChevronLeft size={15} />
-                            </button>
-                            {getPageNumbers().map((p, i) =>
-                                p === '...' ? (
-                                    <span key={`ellipsis-${i}`} className="page-ellipsis">…</span>
-                                ) : (
-                                    <button
-                                        key={p}
-                                        className={`page-btn${currentPage === p ? ' active' : ''}`}
-                                        onClick={() => goToPage(p as number)}
-                                    >
-                                        {p}
-                                    </button>
-                                )
-                            )}
-                            <button
-                                className="page-btn page-btn-nav"
-                                onClick={() => goToPage(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                                aria-label="Next page"
-                            >
-                                <ChevronRight size={15} />
-                            </button>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    </div>
+                        {!loading && filteredEmps.length > 0 && (
+                            <div className="pagination-bar">
+                                <span className="pagination-info">
+                                    Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredEmps.length)}–{Math.min(currentPage * PAGE_SIZE, filteredEmps.length)} of {filteredEmps.length}
+                                </span>
+                                <div className="pagination-controls">
+                                    <button className="page-btn page-btn-nav" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}><ChevronLeft size={15} /></button>
+                                    {getPageNumbers(empTotalPages, currentPage).map((p, i) =>
+                                        p === '...' ? <span key={`e-${i}`} className="page-ellipsis">…</span> :
+                                            <button key={p} className={`page-btn${currentPage === p ? ' active' : ''}`} onClick={() => setCurrentPage(p as number)}>{p}</button>
+                                    )}
+                                    <button className="page-btn page-btn-nav" onClick={() => setCurrentPage(p => Math.min(empTotalPages, p + 1))} disabled={currentPage === empTotalPages}><ChevronRight size={15} /></button>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* ══ LEAVE REQUESTS PANE ══ */}
+                {subTab === 'leave' && (
+                    <>
+                        <div style={{ padding: '16px 20px 0' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                    {filteredLeave.length} result{filteredLeave.length !== 1 ? 's' : ''}
+                                </span>
+                            </div>
+                            <div className="filter-bar">
+                                <div className="search-input-wrap">
+                                    <Search size={14} className="search-icon" />
+                                    <input type="text" placeholder="Search by name or ID…" value={leaveSearch} onChange={e => setLeaveSearch(e.target.value)} className="search-input" />
+                                </div>
+                                <select value={leaveFilterStatus} onChange={e => setLeaveFilterStatus(e.target.value as any)}>
+                                    <option value="pending">Pending</option>
+                                    <option value="all">All Statuses</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="declined">Declined</option>
+                                </select>
+                                <select value={leaveFilterRole} onChange={e => setLeaveFilterRole(e.target.value)}>
+                                    <option value="">All Roles</option>
+                                    {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                            </div>
+                        </div>
+                        <div className="data-table-wrap">
+                            <table className="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>EMPLOYEE</th><th>LEAVE TYPE</th><th>DATES</th><th>DURATION</th><th>SUBMITTED</th><th>STATUS</th><th>ACTIONS</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {leaveLoading ? (
+                                        <tr><td colSpan={7}><div className="empty-state"><Loader2 size={20} className="spin" /><p>Loading requests…</p></div></td></tr>
+                                    ) : paginatedLeave.length === 0 ? (
+                                        <tr><td colSpan={7}><div className="empty-state"><Package size={20} /><p>No leave requests match your filters</p></div></td></tr>
+                                    ) : paginatedLeave.map(r => {
+                                        const days = calcDays(r.startDate, r.endDate);
+                                        const meta = LEAVE_STATUS_META[r.status];
+                                        return (
+                                            <tr key={r.id} className="clickable-row" onClick={() => setDetailModal(r)}>
+                                                <td>
+                                                    <div className="emp-name-cell">
+                                                        <div className="emp-avatar">{r.employeeName.charAt(0).toUpperCase()}</div>
+                                                        <div>
+                                                            <div style={{ fontWeight: 600, fontSize: 13 }}>{r.employeeName}</div>
+                                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{r.employeeNumber}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td style={{ fontSize: 13 }}>{LEAVE_TYPE_LABELS[r.leaveType]}</td>
+                                                <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{fmtDate(r.startDate)}<br />{fmtDate(r.endDate)}</td>
+                                                <td style={{ fontSize: 13, fontWeight: 600 }}>{days} {days === 1 ? 'day' : 'days'}</td>
+                                                <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{fmtDate(r.submittedAt)}</td>
+                                                <td>
+                                                    <span className={`status-badge ${r.status === 'approved' ? 'active' : r.status === 'declined' ? 'deactivated' : 'pending-badge'}`}
+                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                        {meta.icon}{meta.label}
+                                                    </span>
+                                                </td>
+                                                <td onClick={e => e.stopPropagation()}>
+                                                    {r.status === 'pending' ? (
+                                                        <div style={{ display: 'flex', gap: 6 }}>
+                                                            <button
+                                                                className="btn btn-xs"
+                                                                style={{ background: 'rgba(5,205,153,0.12)', color: '#05cd99', border: '1px solid rgba(5,205,153,0.3)', fontWeight: 600 }}
+                                                                onClick={() => setActionModal({ request: r, action: 'approve' })}
+                                                            >
+                                                                <CheckCircle2 size={11} /> Approve
+                                                            </button>
+                                                            <button className="btn btn-xs btn-danger" onClick={() => setActionModal({ request: r, action: 'decline' })}>
+                                                                <X size={11} /> Decline
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                            {r.status === 'approved' ? `By ${r.reviewedBy ?? 'Admin'}` : 'Declined'}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                        {!leaveLoading && filteredLeave.length > 0 && (
+                            <div className="pagination-bar">
+                                <span className="pagination-info">
+                                    Showing {Math.min((leavePage - 1) * PAGE_SIZE + 1, filteredLeave.length)}–{Math.min(leavePage * PAGE_SIZE, filteredLeave.length)} of {filteredLeave.length}
+                                </span>
+                                <div className="pagination-controls">
+                                    <button className="page-btn page-btn-nav" onClick={() => setLeavePage(p => Math.max(1, p - 1))} disabled={leavePage === 1}><ChevronLeft size={15} /></button>
+                                    {getPageNumbers(leaveTotalPages, leavePage).map((p, i) =>
+                                        p === '...' ? <span key={`l-${i}`} className="page-ellipsis">…</span> :
+                                            <button key={p} className={`page-btn${leavePage === p ? ' active' : ''}`} onClick={() => setLeavePage(p as number)}>{p}</button>
+                                    )}
+                                    <button className="page-btn page-btn-nav" onClick={() => setLeavePage(p => Math.min(leaveTotalPages, p + 1))} disabled={leavePage === leaveTotalPages}><ChevronRight size={15} /></button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Leave Detail Modal ── */}
+                        {detailModal && (
+                            <div className="modal-overlay" onClick={() => setDetailModal(null)}>
+                                <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                                    <div className="modal-header">
+                                        <div>
+                                            <h3>Leave Request Detail</h3>
+                                            <p className="modal-subtitle">Full details for this request</p>
+                                        </div>
+                                        <button className="icon-btn" onClick={() => setDetailModal(null)}><X size={16} /></button>
+                                    </div>
+                                    <div className="employee-detail-avatar" style={{ marginBottom: 16 }}>
+                                        <div className="avatar-circle large">{detailModal.employeeName.charAt(0).toUpperCase()}</div>
+                                        <div className="avatar-info">
+                                            <h4>{detailModal.employeeName}</h4>
+                                            <div className="avatar-meta" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                                {detailModal.employeeNumber} · {toDisplayRole(detailModal.role)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="detail-grid">
+                                        {[
+                                            { label: 'Leave Type', value: LEAVE_TYPE_LABELS[detailModal.leaveType] },
+                                            { label: 'Duration', value: `${calcDays(detailModal.startDate, detailModal.endDate)} days` },
+                                            { label: 'Start Date', value: fmtDate(detailModal.startDate) },
+                                            { label: 'End Date', value: fmtDate(detailModal.endDate) },
+                                            { label: 'Submitted', value: fmtDate(detailModal.submittedAt) },
+                                            { label: 'Status', value: LEAVE_STATUS_META[detailModal.status].label },
+                                        ].map(({ label, value }) => (
+                                            <div key={label} className="detail-item">
+                                                <span className="detail-label">{label}</span>
+                                                <span className="detail-value">{value}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="detail-item" style={{ margin: '12px 0' }}>
+                                        <span className="detail-label">Reason</span>
+                                        <span className="detail-value" style={{ whiteSpace: 'pre-wrap' }}>{detailModal.reason}</span>
+                                    </div>
+                                    {detailModal.reviewNote && (
+                                        <div style={{ background: detailModal.status === 'approved' ? 'rgba(5,205,153,0.08)' : 'rgba(238,93,80,0.08)', border: `1px solid ${detailModal.status === 'approved' ? 'rgba(5,205,153,0.25)' : 'rgba(238,93,80,0.25)'}`, borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--text-primary)', marginBottom: 8 }}>
+                                            <strong>Review Note:</strong> {detailModal.reviewNote}
+                                        </div>
+                                    )}
+                                    <div className="modal-actions">
+                                        {detailModal.status === 'pending' ? (
+                                            <>
+                                                <button className="btn btn-danger" onClick={() => { setDetailModal(null); setActionModal({ request: detailModal, action: 'decline' }); }}><X size={13} /> Decline</button>
+                                                <button className="btn btn-primary" onClick={() => { setDetailModal(null); setActionModal({ request: detailModal, action: 'approve' }); }}><CheckCircle2 size={13} /> Approve</button>
+                                            </>
+                                        ) : (
+                                            <button className="btn" onClick={() => setDetailModal(null)}>Close</button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Action Confirm Modal ── */}
+                        {actionModal && (
+                            <LeaveActionModal
+                                request={actionModal.request}
+                                action={actionModal.action}
+                                onClose={() => setActionModal(null)}
+                                onConfirm={handleLeaveConfirm}
+                            />
+                        )}
+                    </>
                 )}
             </div>
         </div>
@@ -1111,6 +1518,330 @@ function ProfileTab() {
                     ))}
                 </div>
             </div>
+        </div>
+    );
+}
+
+// ─── Leave Management Tab ─────────────────────────────────────────────────────
+
+function LeaveManagementTab() {
+    const [requests, setRequests] = useState<LeaveRequest[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filterStatus, setFilterStatus] = useState<'all' | LeaveStatus>('pending');
+    const [filterRole, setFilterRole] = useState('');
+    const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [actionModal, setActionModal] = useState<{ request: LeaveRequest; action: 'approve' | 'decline' } | null>(null);
+    const [detailModal, setDetailModal] = useState<LeaveRequest | null>(null);
+
+    const PAGE_SIZE = 7;
+    const adminName = localStorage.getItem('employeeName') ?? 'System Admin';
+
+    useEffect(() => {
+        const token = localStorage.getItem('authToken');
+        fetch('/api/leave/all', { headers: { 'Authorization': `Bearer ${token}` } })
+            .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+            .then((data: any[]) => {
+                setRequests(Array.isArray(data) ? data.map(r => ({
+                    id: r.id,
+                    employeeNumber: r.employeeNumber,
+                    employeeName: r.employeeName,
+                    role: r.role ?? '',
+                    leaveType: r.leaveType,
+                    startDate: r.startDate,
+                    endDate: r.endDate,
+                    reason: r.reason,
+                    status: r.status,
+                    submittedAt: r.submittedAt,
+                    reviewedBy: r.reviewedBy,
+                    reviewNote: r.reviewNote,
+                })) : []);
+            })
+            .catch(() => setRequests([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    const filtered = requests.filter(r => {
+        const matchStatus = filterStatus === 'all' || r.status === filterStatus;
+        const matchRole = !filterRole || r.role === filterRole || toDisplayRole(r.role) === filterRole;
+        const matchSearch = !search
+            || r.employeeName.toLowerCase().includes(search.toLowerCase())
+            || r.employeeNumber.toLowerCase().includes(search.toLowerCase());
+        return matchStatus && matchRole && matchSearch;
+    });
+
+    useEffect(() => { setCurrentPage(1); }, [filterStatus, filterRole, search]);
+
+    const sorted = [...filtered].sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+    const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+    const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    const pendingCount = requests.filter(r => r.status === 'pending').length;
+    const approvedCount = requests.filter(r => r.status === 'approved').length;
+    const declinedCount = requests.filter(r => r.status === 'declined').length;
+
+    const handleConfirm = (id: number, action: 'approve' | 'decline', note: string) => {
+        setRequests(prev => prev.map(r =>
+            r.id === id
+                ? { ...r, status: action === 'approve' ? 'approved' : 'declined', reviewedBy: adminName, reviewNote: note || undefined }
+                : r
+        ));
+    };
+
+    const getPageNumbers = () => {
+        const pages: (number | '...')[] = [];
+        if (totalPages <= 5) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            if (currentPage > 3) pages.push('...');
+            const start = Math.max(2, currentPage - 1);
+            const end = Math.min(totalPages - 1, currentPage + 1);
+            for (let i = start; i <= end; i++) pages.push(i);
+            if (currentPage < totalPages - 2) pages.push('...');
+            pages.push(totalPages);
+        }
+        return pages;
+    };
+
+    return (
+        <div className="dashboard-content">
+
+            {/* ── Summary Stats ── */}
+            <div className="stats-row" style={{ marginBottom: 20 }}>
+                {[
+                    { icon: Clock, bg: 'bg-warning', label: 'PENDING', value: pendingCount, sub: 'Awaiting review' },
+                    { icon: CheckCircle2, bg: 'bg-success', label: 'APPROVED', value: approvedCount, sub: 'Granted this period' },
+                    { icon: AlertCircle, bg: 'bg-danger', label: 'DECLINED', value: declinedCount, sub: 'Rejected requests' },
+                    { icon: Users, bg: 'bg-primary', label: 'TOTAL', value: requests.length, sub: 'All leave requests' },
+                ].map(({ icon: Icon, bg, label, value, sub }) => (
+                    <div key={label} className="stat-card">
+                        <div className={`stat-icon ${bg}`}><Icon size={18} /></div>
+                        <div className="stat-text">
+                            <p className="stat-label">{label}</p>
+                            <h3 className="stat-value">{value}</h3>
+                            <small>{sub}</small>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* ── Main Table Card ── */}
+            <div className="card employees-table-card" style={{ minHeight: 520 }}>
+                <div className="card-header">
+                    <h3>Leave Requests</h3>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                        {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
+
+                {/* ── Filter Bar ── */}
+                <div className="filter-bar">
+                    <div className="search-input-wrap">
+                        <Search size={14} className="search-icon" />
+                        <input
+                            type="text"
+                            placeholder="Search by name or ID…"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="search-input"
+                        />
+                    </div>
+                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)}>
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="declined">Declined</option>
+                    </select>
+                    <select value={filterRole} onChange={e => setFilterRole(e.target.value)}>
+                        <option value="">All Roles</option>
+                        {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                </div>
+
+                {/* ── Table ── */}
+                <div className="data-table-wrap">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>EMPLOYEE</th>
+                                <th>LEAVE TYPE</th>
+                                <th>DATES</th>
+                                <th>DURATION</th>
+                                <th>SUBMITTED</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={7}>
+                                    <div className="empty-state"><Loader2 size={20} className="spin" /><p>Loading requests…</p></div>
+                                </td></tr>
+                            ) : paginated.length === 0 ? (
+                                <tr><td colSpan={7}>
+                                    <div className="empty-state"><Package size={20} /><p>No leave requests match your filters</p></div>
+                                </td></tr>
+                            ) : paginated.map(r => {
+                                const days = calcDays(r.startDate, r.endDate);
+                                const meta = LEAVE_STATUS_META[r.status];
+                                return (
+                                    <tr
+                                        key={r.id}
+                                        className="clickable-row"
+                                        onClick={() => setDetailModal(r)}
+                                    >
+                                        <td>
+                                            <div className="emp-name-cell">
+                                                <div className="emp-avatar">{r.employeeName.charAt(0).toUpperCase()}</div>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{r.employeeName}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{r.employeeNumber}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style={{ fontSize: 13 }}>{LEAVE_TYPE_LABELS[r.leaveType]}</td>
+                                        <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                            {fmtDate(r.startDate)}<br />{fmtDate(r.endDate)}
+                                        </td>
+                                        <td style={{ fontSize: 13, fontWeight: 600 }}>
+                                            {days} {days === 1 ? 'day' : 'days'}
+                                        </td>
+                                        <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{fmtDate(r.submittedAt)}</td>
+                                        <td>
+                                            <span className={`status-badge ${r.status === 'approved' ? 'active' : r.status === 'declined' ? 'deactivated' : 'pending-badge'}`}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                {meta.icon}{meta.label}
+                                            </span>
+                                        </td>
+                                        <td onClick={e => e.stopPropagation()}>
+                                            {r.status === 'pending' ? (
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    <button
+                                                        className="btn btn-xs"
+                                                        style={{ background: 'rgba(5,205,153,0.12)', color: '#05cd99', border: '1px solid rgba(5,205,153,0.3)', fontWeight: 600 }}
+                                                        onClick={() => setActionModal({ request: r, action: 'approve' })}
+                                                    >
+                                                        <CheckCircle2 size={11} /> Approve
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-xs btn-danger"
+                                                        onClick={() => setActionModal({ request: r, action: 'decline' })}
+                                                    >
+                                                        <X size={11} /> Decline
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                    {r.status === 'approved' ? `By ${r.reviewedBy ?? 'Admin'}` : 'Declined'}
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* ── Pagination ── */}
+                {!loading && filtered.length > 0 && (
+                    <div className="pagination-bar">
+                        <span className="pagination-info">
+                            Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                        </span>
+                        <div className="pagination-controls">
+                            <button className="page-btn page-btn-nav" onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}>
+                                <ChevronLeft size={15} />
+                            </button>
+                            {getPageNumbers().map((p, i) =>
+                                p === '...' ? (
+                                    <span key={`ellipsis-${i}`} className="page-ellipsis">…</span>
+                                ) : (
+                                    <button key={p} className={`page-btn${currentPage === p ? ' active' : ''}`} onClick={() => setCurrentPage(p as number)}>
+                                        {p}
+                                    </button>
+                                )
+                            )}
+                            <button className="page-btn page-btn-nav" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}>
+                                <ChevronRight size={15} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* ── Leave Detail Modal ── */}
+            {detailModal && (
+                <div className="modal-overlay" onClick={() => setDetailModal(null)}>
+                    <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                        <div className="modal-header">
+                            <div>
+                                <h3>Leave Request Detail</h3>
+                                <p className="modal-subtitle">Full details for this request</p>
+                            </div>
+                            <button className="icon-btn" onClick={() => setDetailModal(null)}><X size={16} /></button>
+                        </div>
+                        <div className="employee-detail-avatar" style={{ marginBottom: 16 }}>
+                            <div className="avatar-circle large">{detailModal.employeeName.charAt(0).toUpperCase()}</div>
+                            <div className="avatar-info">
+                                <h4>{detailModal.employeeName}</h4>
+                                <div className="avatar-meta" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                    {detailModal.employeeNumber} · {toDisplayRole(detailModal.role)}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="detail-grid">
+                            {[
+                                { label: 'Leave Type', value: LEAVE_TYPE_LABELS[detailModal.leaveType] },
+                                { label: 'Duration', value: `${calcDays(detailModal.startDate, detailModal.endDate)} days` },
+                                { label: 'Start Date', value: fmtDate(detailModal.startDate) },
+                                { label: 'End Date', value: fmtDate(detailModal.endDate) },
+                                { label: 'Submitted', value: fmtDate(detailModal.submittedAt) },
+                                { label: 'Status', value: LEAVE_STATUS_META[detailModal.status].label },
+                            ].map(({ label, value }) => (
+                                <div key={label} className="detail-item">
+                                    <span className="detail-label">{label}</span>
+                                    <span className="detail-value">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="detail-item" style={{ margin: '12px 0' }}>
+                            <span className="detail-label">Reason</span>
+                            <span className="detail-value" style={{ whiteSpace: 'pre-wrap' }}>{detailModal.reason}</span>
+                        </div>
+                        {detailModal.reviewNote && (
+                            <div style={{ background: detailModal.status === 'approved' ? 'rgba(5,205,153,0.08)' : 'rgba(238,93,80,0.08)', border: `1px solid ${detailModal.status === 'approved' ? 'rgba(5,205,153,0.25)' : 'rgba(238,93,80,0.25)'}`, borderRadius: 8, padding: '10px 12px', fontSize: 13, color: 'var(--text-primary)', marginBottom: 8 }}>
+                                <strong>Review Note:</strong> {detailModal.reviewNote}
+                            </div>
+                        )}
+                        <div className="modal-actions">
+                            {detailModal.status === 'pending' ? (
+                                <>
+                                    <button className="btn btn-danger" onClick={() => { setDetailModal(null); setActionModal({ request: detailModal, action: 'decline' }); }}>
+                                        <X size={13} /> Decline
+                                    </button>
+                                    <button className="btn btn-primary" onClick={() => { setDetailModal(null); setActionModal({ request: detailModal, action: 'approve' }); }}>
+                                        <CheckCircle2 size={13} /> Approve
+                                    </button>
+                                </>
+                            ) : (
+                                <button className="btn" onClick={() => setDetailModal(null)}>Close</button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Action Confirm Modal ── */}
+            {actionModal && (
+                <LeaveActionModal
+                    request={actionModal.request}
+                    action={actionModal.action}
+                    onClose={() => setActionModal(null)}
+                    onConfirm={handleConfirm}
+                />
+            )}
         </div>
     );
 }
