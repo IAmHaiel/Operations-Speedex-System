@@ -80,5 +80,34 @@ namespace OTMS.Controllers
                 });
             }
         }
+
+        /// <summary>
+        /// Updates the progress of a task, allowing the assigned employee to change the task's status and add remarks. Only authenticated users with the "OperationsAdmin", "Encoder", or "Coordinator" roles can update task progress, and they can only update tasks that are assigned to them.
+        /// </summary>
+        [Authorize(Roles = "OperationsAdmin,Encoder,Coordinator")]
+        [HttpPatch("{taskId}/progress")]
+        public async Task<ActionResult<TaskResponseDTO>> UpdateTaskProgress(Guid taskId, UpdateTaskProgressDTO request)
+        {
+            try
+            {
+                var result = await taskService.UpdateTaskProgressAsync(taskId, request);
+
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
     }
 }
