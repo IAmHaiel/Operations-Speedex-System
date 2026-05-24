@@ -9,7 +9,7 @@ namespace OTMS.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class authenticationController(IAuthService authService) : ControllerBase
+    public class authenticationController(IAuthService authService, ILeaveRequest lrService) : ControllerBase
     {
 
         // Authentication APIs
@@ -27,6 +27,8 @@ namespace OTMS.Controllers
         [ProducesResponseType(500)]
         public async Task<ActionResult<TokenResponseDTO>> Login(EmployeeLoginDTO request)
         {
+            await lrService.UpdateEmployeeAvailabilityStatusesAsync();
+
             var result = await authService.LoginAsync(request);
             if (result is null)
             {

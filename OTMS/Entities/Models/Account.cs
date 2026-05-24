@@ -21,7 +21,9 @@
         public ICollection<Task> AssignedTasks { get; set; } = new List<Task>();
         public ICollection<Task> CreatedTasks { get; set; } = new List<Task>();
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
-       
+        public ICollection<LeaveRequest> SubmittedLeaveRequests { get; set; } = new List<LeaveRequest>(); // Leave Request that is submitted by this Account.
+        public ICollection<LeaveRequest> ApprovedLeaveRequests { get; set; } = new List<LeaveRequest>(); // Leave Request that is approved by this Account.
+
         // for password change tracking.
         public bool IsPasswordChanged { get; set; } = false;
     }

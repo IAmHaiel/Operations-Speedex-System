@@ -1,0 +1,58 @@
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using OTMS.Entities.DTOs.LeaveRequest;
+using OTMS.Service.Interfaces;
+
+namespace OTMS.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class leaverequestController(ILeaveRequest leaveRequest) : ControllerBase
+    {
+
+        /// <summary>
+        /// The system shall allow Operational Team members to submit a formal time-off request by specifying the start date, end date, and reason.
+        /// </summary>
+        [Authorize(Roles = "SystemAdmin,OperationAdmin,Coordinator,Encoder")]
+        [HttpPost("create-leave-request")]
+        public async Task<IActionResult> CreateLeaveRequest([FromBody] CreateLeaveRequestDTO request)
+        {
+            try
+            {
+                var result = await leaveRequest.CreateLeaveRequestAsync(request);
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Gets a list of all leave requests in the system. This endpoint is restricted to users with the "OperationAdmin" role, ensuring that only authorized personnel can access this sensitive information.
+        /// </summary>
+        [Authorize(Roles = "OperationAdmin")]
+        [HttpGet("get-all-leave-requests")]
+        public async Task<IActionResult> GetAllLeaveRequests()
+        {
+            var result = await leaveRequest.GetAllLeaveRequestsAsync();
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Update Leave Status of the leave request. This endpoint is restricted to users with the "OperationAdmin" role, ensuring that only authorized personnel can update the status of leave requests.
+        /// </summary>
+        [Authorize(Roles = "OperationAdmin")]
+        [HttpPut("{leaveId}/status")]
+        public async Task<IActionResult> UpdateLeaveStatus(Guid leaveId, [FromBody] UpdateLeaveStatusDTO request)
+        {
+            var success = await leaveRequest.UpdateLeaveStatusAsync(leaveId, request);
+
+            if (!success)
+                return NotFound(new { Message = "Leave request not found." });
+
+            return Ok("Leave Request status updated successfully.");
+        }
+    }
+}
