@@ -1,9 +1,10 @@
-﻿using OTMS.Entities.Models;
+﻿using OTMS.Entities.DTOs.LeaveRequest;
+using OTMS.Entities.DTOs.LeaveRequest.Responses;
 
 namespace OTMS.Service.Interfaces
 {
     public interface ILeaveRequest
     {
-        Task<LeaveRequest> CreateLeaveRequestAsync
+        Task<LeaveRequestResponseDTO> CreateLeaveRequestAsync(CreateLeaveRequestDTO request);
     }
 }
