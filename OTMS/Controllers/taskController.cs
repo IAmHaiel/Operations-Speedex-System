@@ -15,7 +15,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Creates a new task and assigns it to an employee. Only OperationsAdmin users can create tasks.
         /// </summary>
-        [Authorize(Roles = "OperationsAdmin")]
+        [Authorize(Roles = "OperationAdmin")]
         [HttpPost("create-task")]
         public async Task<ActionResult<TaskResponseDTO>> CreateTask(
             CreateTaskDTO request)
@@ -38,7 +38,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Updates an existing task's details. Only authenticated users can update tasks, and only if they have the "OperationsAdmin" role.
         /// </summary>
-        [Authorize(Roles = "OperationsAdmin")]
+        [Authorize(Roles = "OperationAdmin")]
         [HttpPut("update-task/{taskId}")]
         public async Task<ActionResult<TaskResponseDTO>> UpdateTask(Guid taskId, UpdateTaskDTO request)
         {
@@ -62,7 +62,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Reopens a completed or closed task, changing its status back to "Pending". Only authenticated users with the "OperationsAdmin" role can reopen tasks.
         /// </summary>
-        [Authorize(Roles = "OperationsAdmin")]
+        [Authorize(Roles = "OperationAdmin")]
         [HttpPatch("{taskId}/reopen")]
         public async Task<ActionResult<TaskResponseDTO>> ReopenTask(Guid taskId)
         {
@@ -84,7 +84,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Updates the progress of a task, allowing the assigned employee to change the task's status and add remarks. Only authenticated users with the "OperationsAdmin", "Encoder", or "Coordinator" roles can update task progress, and they can only update tasks that are assigned to them.
         /// </summary>
-        [Authorize(Roles = "OperationsAdmin,Encoder,Coordinator")]
+        [Authorize(Roles = "OperationAdmin,Encoder,Coordinator")]
         [HttpPatch("{taskId}/progress")]
         public async Task<ActionResult<TaskResponseDTO>> UpdateTaskProgress(Guid taskId, UpdateTaskProgressDTO request)
         {
@@ -113,7 +113,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Gets a list of tasks that are assigned to the currently authenticated user. Only authenticated users with the "OperationsAdmin", "Encoder", or "Coordinator" roles can access this endpoint, and they will only see tasks that are assigned to them.
         /// </summary>
-        [Authorize(Roles = "OperationsAdmin,Encoder,Coordinator")]
+        [Authorize(Roles = "OperationAdmin,Encoder,Coordinator")]
         [HttpGet("my-tasks")]
         public async Task<ActionResult<List<TaskResponseDTO>>> GetMyTasks()
         {
