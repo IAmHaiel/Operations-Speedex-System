@@ -80,5 +80,53 @@ namespace OTMS.Service.Services
                 CreatedAt = task.CreatedAt
             };
         }
+
+        public async Task<TaskResponseDTO> UpdateTaskAsync(Guid taskId, UpdateTaskDTO request)
+        {
+            var task = await context.Tasks
+                .Include(t => t.Assignee)
+                    .ThenInclude(a => a.Employee)
+                .Include(t => t.Creator)
+                    .ThenInclude(a => a.Employee)
+                .FirstOrDefaultAsync(t => t.TaskId == taskId);
+
+            if (task == null)
+            {
+                throw new Exception("Task not found.");
+            }
+
+            // Update Fields
+            task.TaskTitle = request.TaskTitle;
+            task.TaskDescription = request.TaskDescription;
+            task.Priority = request.Priority;
+            task.DueAt = request.DueAt;
+            task.AssignedTo = request.AssignedTo;
+            task.TaskRemarks = request.TaskRemarks;
+
+            task.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            // Reload assignee if changed
+            var assignedAccount = await context.Accounts
+                .Include(a => a.Employee)
+                .FirstOrDefaultAsync(a => a.AccountId == request.AssignedTo);
+
+            return new TaskResponseDTO
+            {
+                TaskId = task.TaskId,
+                TaskTitle = task.TaskTitle,
+                TaskDescription = task.TaskDescription,
+                Priority = task.Priority,
+                DueAt = task.DueAt,
+                TaskStatus = task.TaskStatus,
+
+                AssignedEmployee = assignedAccount?.Employee.EmployeeName ?? "",
+
+                CreatedByEmployee = task.Creator.Employee.EmployeeName,
+
+                CreatedAt = task.CreatedAt
+            };
+        }
     }
 }
