@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OTMS.Common.Constraints;
 using OTMS.Data;
 using OTMS.Entities.DTOs;
+using OTMS.Entities.DTOs.ActivityLogs.Responses;
 using OTMS.Entities.Models;
 using OTMS.Service.Helper;
 using OTMS.Service.Interfaces;
@@ -15,12 +17,8 @@ using System.Text;
 
 namespace OTMS.Service.Services
 {
-    public class AuthService(
-        OTMSDbContext context,
-        IConfiguration configuration
-    ) : IAuthService
+    public class AuthService(IActivityLogService activityLogService, IConfiguration configuration, OTMSDbContext context) : IAuthService
     {
-
         static int MaxFailedLoginAttempts = 3;
 
         public async Task<TokenResponseDTO?> LoginAsync(
@@ -83,6 +81,16 @@ namespace OTMS.Service.Services
                 return null;
             }
 
+            // Save Login Activity
+            await activityLogService.LogActivityAsync(
+                employee.Account.AccountId,
+                ActivityTypes.Login,
+                $"{employee.EmployeeName} timed in at {DateTime.Now:hh:mm tt}"
+                );
+
+            employee.Account.FailedLoginAttempts = 0;
+            await context.SaveChangesAsync();
+
             return await CreateTokenResponse(employee);
         }
 
@@ -99,6 +107,8 @@ namespace OTMS.Service.Services
             {
                 return null;
             }
+
+            ActivityLogResponseDTO activity = new ActivityLogResponseDTO();
 
             return await CreateTokenResponse(user);
         }
