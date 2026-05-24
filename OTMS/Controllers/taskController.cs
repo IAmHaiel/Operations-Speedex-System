@@ -15,7 +15,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Creates a new task and assigns it to an employee. Only authenticated users can create tasks.
         /// </summary>
-        [Authorize]
+        [Authorize(Roles = "OperationsAdmin")]
         [HttpPost("create-task")]
         public async Task<ActionResult<TaskResponseDTO>> CreateTask(
             CreateTaskDTO request)
