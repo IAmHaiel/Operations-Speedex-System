@@ -78,6 +78,27 @@ namespace OTMS.Service.Services
                 .ToListAsync();
         }
 
+        public async System.Threading.Tasks.Task UpdateEmployeeAvailabilityStatusesAsync()
+        {
+            var currentDate = DateTime.UtcNow.Date;
+
+            var accounts = await context.Accounts
+                .Include(a => a.SubmittedLeaveRequests)
+                .ToListAsync();
+
+            foreach(var account in accounts)
+            {
+                bool isOnLeave = account.SubmittedLeaveRequests
+                    .Any(lr => lr.Approval_Status == "Approved"
+                    && currentDate >= lr.Start_Date.Date
+                    && currentDate <= lr.End_Date.Date);
+
+                account.AccountStatus = isOnLeave ? "On Leave" : "Active";
+            }
+
+            await context.SaveChangesAsync();
+        }
+
         public async Task<bool> UpdateLeaveStatusAsync(Guid leaveId, UpdateLeaveStatusDTO request)
         {
             var leaveRequest = await context.LeaveRequests
