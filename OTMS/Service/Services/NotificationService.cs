@@ -35,7 +35,7 @@ namespace OTMS.Service.Services
             var notification = new Notification
             {
                 NotificationId = Guid.NewGuid(),
-                EmployeeId = task.AssignedTo,
+                EmployeeId = task.AssignedTo, // EmployeeId = AccountId
                 TaskId = task.TaskId,
                 NotificationType =
                     NotificationTypes.TaskAssigned,
