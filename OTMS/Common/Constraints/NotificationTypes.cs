@@ -2,7 +2,7 @@
 {
     public class NotificationTypes
     {
-        public const string TaskAssigned = "TaskAssigned";
+        public const string TaskAssigned = "Task Assigned";
         public const string TaskDeadlineApproaching = "Task Deadline Approaching";
     }
 }
