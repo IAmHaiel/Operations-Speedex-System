@@ -36,6 +36,7 @@ import {
     ChevronLeft,
 } from 'lucide-react';
 import './OpEmployee_Dashboard.css';
+import NotificationBell from '../../components/NotificationBell/NotificationBell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1171,6 +1172,7 @@ export default function EmployeeDashboard() {
                         <h2>{pageTitles[activeTab]}</h2>
                         <p>Dashboard — {today}</p>
                     </div>
+                    <NotificationBell apiEndpoint="/api/notifications" />
                 </div>
 
                 {activeTab === 'dashboard' && (

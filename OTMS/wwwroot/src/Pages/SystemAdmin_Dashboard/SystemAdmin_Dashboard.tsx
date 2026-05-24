@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
     Users,
     ClipboardList,
@@ -32,6 +32,7 @@ import {
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './SystemAdmin_Dashboard.css';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../../components/NotificationBell/NotificationBell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1970,13 +1971,16 @@ export default function Dashboard() {
                             })}
                         </p>
                     </div>
+                    <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     {(activeTab === 'dashboard' || activeTab === 'employees') && (
                         <div className="header-actions">
                             <button className="quick-action-btn-header" onClick={() => setShowAddModal(true)}>
                                 <Users size={18} /> Add Employee
                             </button>
                         </div>
-                    )}
+                        )}
+                        <NotificationBell apiEndpoint="/api/notification/my-notifications" />
+                    </div>
                 </div>
 
                 {activeTab === 'dashboard' && (

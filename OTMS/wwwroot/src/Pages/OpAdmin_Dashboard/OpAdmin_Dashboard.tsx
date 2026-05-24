@@ -27,6 +27,7 @@ import {
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './OpAdmin_Dashboard.css';
 import { useNavigate } from 'react-router-dom';
+import NotificationBell from '../../components/NotificationBell/NotificationBell';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1161,6 +1162,7 @@ export default function OpsAdminDashboard() {
                                 <Plus size={18} />
                                 New Task
                             </button>
+                            <NotificationBell apiEndpoint="/api/notifications" />
                         </div>
                     )}
                 </div>
