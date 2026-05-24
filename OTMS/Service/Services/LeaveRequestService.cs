@@ -77,5 +77,37 @@ namespace OTMS.Service.Services
                 })
                 .ToListAsync();
         }
+
+        public async Task<bool> UpdateLeaveStatusAsync(Guid leaveId, UpdateLeaveStatusDTO request)
+        {
+            var leaveRequest = await context.LeaveRequests
+                .FirstOrDefaultAsync(lr => lr.LeaveId == leaveId);
+
+            if (leaveRequest == null)
+                return false;
+
+            // Get the Account
+            var claimProfile = httpContextAccessor
+               .HttpContext?
+               .User
+               .FindFirst(ClaimTypes.NameIdentifier)?
+               .Value;
+
+            if (string.IsNullOrEmpty(claimProfile))
+                return false;
+
+            var profile = await context.Employees
+                .Include(e => e.Account)
+                .FirstOrDefaultAsync(e => e.Account.AccountId.ToString() == claimProfile);
+
+            if (profile is null || profile.Account is null)
+                return false;
+
+            leaveRequest.Approved_By = profile.Account.AccountId;
+            leaveRequest.Approval_Status = request.Approval_Status;
+            await context.SaveChangesAsync();
+
+            return true;
+        }
     }
 }

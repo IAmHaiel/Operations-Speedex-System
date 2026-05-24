@@ -29,6 +29,9 @@ namespace OTMS.Controllers
             }
         }
 
+        /// <summary>
+        /// Gets a list of all leave requests in the system. This endpoint is restricted to users with the "OperationAdmin" role, ensuring that only authorized personnel can access this sensitive information.
+        /// </summary>
         [Authorize(Roles = "OperationAdmin")]
         [HttpGet("get-all-leave-requests")]
         public async Task<IActionResult> GetAllLeaveRequests()
@@ -37,5 +40,19 @@ namespace OTMS.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Update Leave Status of the leave request. This endpoint is restricted to users with the "OperationAdmin" role, ensuring that only authorized personnel can update the status of leave requests.
+        /// </summary>
+        [Authorize(Roles = "OperationAdmin")]
+        [HttpPut("{leaveId}/status")]
+        public async Task<IActionResult> UpdateLeaveStatus(Guid leaveId, [FromBody] UpdateLeaveStatusDTO request)
+        {
+            var success = await leaveRequest.UpdateLeaveStatusAsync(leaveId, request);
+
+            if (!success)
+                return NotFound(new { Message = "Leave request not found." });
+
+            return Ok("Leave Request status updated successfully.");
+        }
     }
 }
