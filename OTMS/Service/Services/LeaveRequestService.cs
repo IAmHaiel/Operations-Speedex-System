@@ -62,5 +62,20 @@ namespace OTMS.Service.Services
                 Approval_Status = leaveRequest.Approval_Status
             };
         }
+
+        public async Task<List<LeaveRequestResponseDTO>> GetAllLeaveRequestsAsync()
+        {
+            return await context.LeaveRequests
+                .Select(lr => new LeaveRequestResponseDTO
+                {
+                    LeaveId = lr.LeaveId,
+                    AccountId = lr.AccountId,
+                    Start_Date = lr.Start_Date,
+                    End_Date = lr.End_Date,
+                    Reason = lr.Reason,
+                    Approval_Status = lr.Approval_Status
+                })
+                .ToListAsync();
+        }
     }
 }
