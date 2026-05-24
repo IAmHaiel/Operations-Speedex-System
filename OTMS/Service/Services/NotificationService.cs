@@ -1,4 +1,5 @@
-﻿using OTMS.Common.Constraints;
+﻿using Microsoft.EntityFrameworkCore;
+using OTMS.Common.Constraints;
 using OTMS.Data;
 using OTMS.Entities.Models;
 using OTMS.Service.Interfaces;
@@ -43,6 +44,38 @@ namespace OTMS.Service.Services
 
             await context.Notifications.AddAsync(notification);
             await context.SaveChangesAsync();
+        }
+
+        public async System.Threading.Tasks.Task CheckTaskDeadlinesAsync()
+        {
+            var currentDate = DateTime.UtcNow;
+
+            var upcomingTasks = await context.Tasks
+                .Where(t =>
+                    t.TaskStatus != "Completed"
+                    &&
+                    t.DueAt.HasValue
+                    &&
+                    t.DueAt.Value.Date <=
+                        currentDate.AddDays(1).Date
+                    &&
+                    t.DueAt.Value.Date >= currentDate.Date)
+                .ToListAsync();
+
+            foreach (var task in upcomingTasks)
+            {
+                bool notificationExists =
+                    await context.Notifications.AnyAsync(n =>
+                        n.TaskId == task.TaskId
+                        &&
+                        n.NotificationType ==
+                            NotificationTypes
+                                .TaskDeadlineApproaching);
+                if (!notificationExists)
+                {
+                    await CreateDeadlineNotificationAsync(task);
+                }
+            }
         }
     }
 }
