@@ -109,5 +109,34 @@ namespace OTMS.Controllers
                 });
             }
         }
+
+        /// <summary>
+        /// Gets a list of tasks that are assigned to the currently authenticated user. Only authenticated users with the "OperationsAdmin", "Encoder", or "Coordinator" roles can access this endpoint, and they will only see tasks that are assigned to them.
+        /// </summary>
+        [Authorize(Roles = "OperationsAdmin,Encoder,Coordinator")]
+        [HttpGet("my-tasks")]
+        public async Task<ActionResult<List<TaskResponseDTO>>> GetMyTasks()
+        {
+            try
+            {
+                var result = await taskService.GetMyTasksAsync();
+
+                return Ok(result);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(new
+                {
+                    message = ex.Message
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new
+                {
+                    message = ex.Message
+                });
+            }
+        }
     }
 }

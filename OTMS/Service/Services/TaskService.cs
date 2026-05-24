@@ -270,5 +270,64 @@ namespace OTMS.Service.Services
                 CreatedAt = task.CreatedAt
             };
         }
+
+        public async Task<List<TaskResponseDTO>> GetMyTasksAsync()
+        {
+            // Get Logged-In Account ID
+            var accountIdClaim = httpContextAccessor
+                .HttpContext?
+                .User
+                .FindFirst(ClaimTypes.NameIdentifier)?
+                .Value;
+
+            if (string.IsNullOrEmpty(accountIdClaim))
+            {
+                throw new UnauthorizedAccessException(
+                    "Invalid user session.");
+            }
+
+            var loggedInAccountId = Guid.Parse(accountIdClaim);
+
+            // Get Logged-In Role
+            var roleClaim = httpContextAccessor
+                .HttpContext?
+                .User
+                .FindFirst(ClaimTypes.Role)?
+                .Value;
+
+            // Allowed Roles
+            var allowedRoles = new[]
+            {"OperationsAdmin", "Encoder", "Coordinator"};
+
+            if (string.IsNullOrEmpty(roleClaim)
+                || !allowedRoles.Contains(roleClaim))
+            {
+                throw new UnauthorizedAccessException(
+                    "You are not authorized to access tasks.");
+            }
+
+            // Get Assigned Tasks
+            var tasks = await context.Tasks
+                .Include(t => t.Assignee)
+                    .ThenInclude(a => a.Employee)
+                .Include(t => t.Creator)
+                    .ThenInclude(a => a.Employee)
+                .Where(t => t.AssignedTo == loggedInAccountId)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync();
+
+            return tasks.Select(task => new TaskResponseDTO
+            {
+                TaskId = task.TaskId,
+                TaskTitle = task.TaskTitle,
+                TaskDescription = task.TaskDescription,
+                Priority = task.Priority,
+                DueAt = task.DueAt,
+                TaskStatus = task.TaskStatus,
+                AssignedEmployee = task.Assignee.Employee.EmployeeName,
+                CreatedByEmployee = task.Creator.Employee.EmployeeName,
+                CreatedAt = task.CreatedAt
+            }).ToList();
+        }
     }
 }
