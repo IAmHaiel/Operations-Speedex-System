@@ -128,5 +128,48 @@ namespace OTMS.Service.Services
                 CreatedAt = task.CreatedAt
             };
         }
+
+        public async Task<TaskResponseDTO> ReopenTaskAsync(Guid taskId)
+        {
+            var task = await context.Tasks
+                .Include(t => t.Assignee)
+                    .ThenInclude(a => a.Employee)
+                .Include(t => t.Creator)
+                    .ThenInclude(a => a.Employee)
+                .FirstOrDefaultAsync(t => t.TaskId == taskId);
+
+            if (task == null)
+            {
+                throw new Exception("Task not found.");
+            }
+
+            if (task.TaskStatus != "Completed")
+            {
+                throw new Exception("Only completed tasks can be reopened.");
+            }
+
+            // Reopen Task
+            task.TaskStatus = "In Progress";
+
+            task.UpdatedAt = DateTime.UtcNow;
+
+            await context.SaveChangesAsync();
+
+            return new TaskResponseDTO
+            {
+                TaskId = task.TaskId,
+                TaskTitle = task.TaskTitle,
+                TaskDescription = task.TaskDescription,
+                Priority = task.Priority,
+                DueAt = task.DueAt,
+                TaskStatus = task.TaskStatus,
+
+                AssignedEmployee = task.Assignee.Employee.EmployeeName,
+
+                CreatedByEmployee = task.Creator.Employee.EmployeeName,
+
+                CreatedAt = task.CreatedAt
+            };
+        }
     }
 }
