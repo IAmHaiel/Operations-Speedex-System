@@ -6,5 +6,7 @@ namespace OTMS.Service.Interfaces
     public interface ITaskService
     {
         Task<TaskResponseDTO> CreateTaskAsync(CreateTaskDTO request);
+        Task<TaskResponseDTO> UpdateTaskAsync(Guid taskId, UpdateTaskDTO request);
+        Task<TaskResponseDTO> ReopenTaskAsync(Guid taskId);
     }
 }
