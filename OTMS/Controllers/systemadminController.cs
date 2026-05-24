@@ -1,11 +1,15 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using OTMS.Entities.DTOs;
 using OTMS.Entities.DTOs.AccountManagement;
+using OTMS.Entities.DTOs.AccountManagement.Responses;
 using OTMS.Service.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using OTMS.Entities.DTOs;
 using OTMS.Entities.DTOs.AccountManagement.Responses;
+using OTMS.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace OTMS.Controllers
 {
@@ -44,7 +48,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Searches the Account Status and the system will give the Accounts based on the Account Status (Active, Deactivated, Locked, Inactive). Only accessible to users with the "SystemAdmin" role.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin, System Admin")]
+        [Authorize(Roles = "SystemAdmin")]
         [ProducesResponseType(typeof(SearchAccountStatusResponseDTO), 200)]
         [HttpGet("search-user-by-status")]
         public async Task<IActionResult> SearchUserByStatus([FromQuery] SearchAccountStatusDTO accountStatus)
@@ -60,7 +64,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Updates the User Account. Only accessible to users with the "SystemAdmin" role.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin, System Admin")]
+        [Authorize(Roles = "SystemAdmin")]
         [ProducesResponseType(typeof(UpdateEmployeeResponseDTO), 200)]
         [HttpPut("update-user")]
         public async Task<IActionResult> UpdateUser([Required][FromQuery]string employeeNumber, UpdateEmployeeDTO request)
@@ -77,7 +81,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Deactivates the User Account. Only accessible to users with the "SystemAdmin" role.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin, System Admin")]
+        [Authorize(Roles = "SystemAdmin")]
         [ProducesResponseType(typeof(DeactivateUserResponseDTO), 200)]
         [HttpPatch("deactivate-user")]
         public async Task<IActionResult> DeactivateUser(DeactivateUserDTO request)
@@ -95,7 +99,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Activates the User Account. Only accessible to users with the "SystemAdmin" role.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin, System Admin")]
+        [Authorize(Roles = "SystemAdmin")]
         [ProducesResponseType(typeof(ActivateUserResponseDTO), 200)]
         [HttpPatch("activate-user")]
         public async Task<IActionResult> ActivateUser(DeactivateUserDTO request)
@@ -113,7 +117,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Assigns a Role for the User Account. Only accessible to users with the "SystemAdmin" role.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin, System Admin")]
+        [Authorize(Roles = "SystemAdmin")]
         [ProducesResponseType(typeof(AssignUserRoleResponseDTO), 200)]
         [HttpPatch("assign-role")]
         public async Task<IActionResult> AssignUserRole(AssignUserRoleDTO request)
@@ -130,7 +134,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Deletes the User Account. Only accessible to users with the "SystemAdmin" role.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin, System Admin")]
+        [Authorize(Roles = "SystemAdmin")]
         [ProducesResponseType(typeof(DeleteUserResponseDTO), 200)]
         [HttpDelete("delete-user")]
         public async Task<IActionResult> DeleteUser(DeactivateUserDTO request)

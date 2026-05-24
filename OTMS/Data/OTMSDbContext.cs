@@ -13,6 +13,7 @@ namespace OTMS.Data
         public DbSet<Announcement> Announcements { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
+        public DbSet<LeaveRequest> LeaveRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -66,6 +67,19 @@ namespace OTMS.Data
                 .HasOne(a => a.Account)
                 .WithMany()
                 .HasForeignKey(a => a.AccountId);
+
+            // Leave Request Relationships
+            modelBuilder.Entity<LeaveRequest>()
+                .HasOne(lr => lr.Account)
+                .WithMany(a => a.SubmittedLeaveRequests)
+                .HasForeignKey(lr => lr.AccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<LeaveRequest>()
+                .HasOne(lr => lr.ApprovedByAccount)
+                .WithMany(a => a.ApprovedLeaveRequests)
+                .HasForeignKey(lr => lr.Approved_By)
+                .OnDelete(DeleteBehavior.Restrict);
         }
     }
 }

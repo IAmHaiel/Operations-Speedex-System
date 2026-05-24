@@ -1,15 +1,19 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using OTMS.Common.Constraints;
+using OTMS.Data;
 using OTMS.Entities.DTOs;
 using OTMS.Entities.Models;
 using OTMS.Service.Interfaces;
+using System.Security.Claims;
 
 namespace OTMS.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class authenticationController(IAuthService authService) : ControllerBase
+    public class authenticationController(OTMSDbContext context, IAuthService authService, ILeaveRequest lrService, IActivityLogService activitylogService) : ControllerBase
     {
 
         // Authentication APIs
@@ -27,12 +31,49 @@ namespace OTMS.Controllers
         [ProducesResponseType(500)]
         public async Task<ActionResult<TokenResponseDTO>> Login(EmployeeLoginDTO request)
         {
+            await lrService.UpdateEmployeeAvailabilityStatusesAsync();
+
             var result = await authService.LoginAsync(request);
             if (result is null)
             {
                 return Unauthorized(new { message = "Invalid Employee ID or password." });
             }
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Logouts the authentication user.
+        /// </summary>
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout()
+        {
+            var accountIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(accountIdClaim))
+                return Unauthorized();
+
+            var accountId = Guid.Parse(accountIdClaim);
+            var account = await context.Accounts
+                .Include(a => a.Employee)
+                .FirstOrDefaultAsync(a => a.AccountId == accountId);
+
+            if (account == null)
+                return NotFound();
+
+            // Remove the Refresh Tokens
+            account.RefreshToken = null;
+            account.RefreshTokenExpiryTime = null;
+
+            await context.SaveChangesAsync();
+
+            // Save Logout Activity
+            await activitylogService.LogActivityAsync(
+                accountId,
+                ActivityTypes.Logout,
+                $"{account.Employee.EmployeeName} timed out at {DateTime.Now:hh:mm tt}");
+
+            return Ok(new {message = "Logged out successfully."});
         }
 
         /// <summary>

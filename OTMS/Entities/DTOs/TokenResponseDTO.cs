@@ -1,4 +1,6 @@
-﻿namespace OTMS.Entities.DTOs
+﻿using OTMS.Entities.DTOs.ActivityLogs.Responses;
+
+namespace OTMS.Entities.DTOs
 {
     public class TokenResponseDTO
     {

@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OTMS.Common.Constraints;
 using OTMS.Data;
 using OTMS.Entities.DTOs;
+using OTMS.Entities.DTOs.ActivityLogs.Responses;
 using OTMS.Entities.Models;
 using OTMS.Service.Helper;
 using OTMS.Service.Interfaces;
@@ -15,12 +17,8 @@ using System.Text;
 
 namespace OTMS.Service.Services
 {
-    public class AuthService(
-        OTMSDbContext context,
-        IConfiguration configuration
-    ) : IAuthService
+    public class AuthService(IActivityLogService activityLogService, IConfiguration configuration, OTMSDbContext context, INotificationService notificationService) : IAuthService
     {
-
         static int MaxFailedLoginAttempts = 3;
 
         public async Task<TokenResponseDTO?> LoginAsync(
@@ -37,6 +35,8 @@ namespace OTMS.Service.Services
             var accountStatus = employee?.Account?.AccountStatus;
             var accountFailedAttempts = employee?.Account?.FailedLoginAttempts;
 
+            
+
             if (employee is null || employee.Account is null || string.IsNullOrEmpty(employee.Account.PasswordHash))
             {
                 return null;
@@ -45,6 +45,11 @@ namespace OTMS.Service.Services
             if (accountStatus is null || accountStatus == "Deactivated" || accountFailedAttempts == MaxFailedLoginAttempts)
             {
                 return null;
+            }
+
+            if (accountStatus == "On Leave")
+            {
+                throw new Exception("Your account is currently on leave. Please contact your administrator for more information.");
             }
 
             var verificationResult =
@@ -83,6 +88,19 @@ namespace OTMS.Service.Services
                 return null;
             }
 
+            // Save Login Activity
+            await activityLogService.LogActivityAsync(
+                employee.Account.AccountId,
+                ActivityTypes.Login,
+                $"{employee.EmployeeName} timed in at {DateTime.Now:hh:mm tt}"
+                );
+
+            employee.Account.FailedLoginAttempts = 0;
+            await context.SaveChangesAsync();
+
+            // Check Task Deadlines
+            await notificationService.CheckTaskDeadlinesAsync();
+
             return await CreateTokenResponse(employee);
         }
 
@@ -100,6 +118,8 @@ namespace OTMS.Service.Services
                 return null;
             }
 
+            ActivityLogResponseDTO activity = new ActivityLogResponseDTO();
+
             return await CreateTokenResponse(user);
         }
 
@@ -114,6 +134,9 @@ namespace OTMS.Service.Services
 
             // Normalize the Employee Number to ensure consistent checks (e.g., uppercase and trim)
             request.EmployeeNumber = request.EmployeeNumber.ToUpper().Trim();
+
+            // Check if the Contact Number is valid and format it
+            request.ContactNumber = ContactNumberFormatter(request.ContactNumber);
 
             var exists = await context.Employees.AnyAsync(
                 u => u.EmployeeNumber == request.EmployeeNumber
@@ -167,8 +190,8 @@ namespace OTMS.Service.Services
             {
                 EmployeeNumber = employee.EmployeeNumber,
                 EmployeeName = employee.EmployeeName ?? string.Empty,
-                Role = account.Role ?? string.Empty,
                 ContactNumber = employee.ContactNumber ?? string.Empty,
+                Role = account.Role ?? string.Empty,
                 GeneratedPassword = generatedUserPassword
             };
         }
@@ -177,7 +200,7 @@ namespace OTMS.Service.Services
 
         private static string ContactNumberFormatter(string contactNumber)
         {
-            if (string.IsNullOrEmpty(contactNumber))
+            if(string.IsNullOrEmpty(contactNumber))
             {
                 return contactNumber;
             }
@@ -194,6 +217,7 @@ namespace OTMS.Service.Services
             // Philippines Contact Number Format: 09XX XXX XXXX
             return $"{contactNumber[..4]} {contactNumber.Substring(4, 3)} {contactNumber.Substring(7, 4)}";
         }
+
         private async Task<TokenResponseDTO> CreateTokenResponse(Employee employee)
         {
 
