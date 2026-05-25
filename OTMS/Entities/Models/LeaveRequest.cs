@@ -9,6 +9,9 @@ namespace OTMS.Entities.Models
         public Guid AccountId { get; set; } // Employee who submitted the leave request
         public Guid? Approved_By { get; set; } // Employee who approved the leave request
 
+        public bool Deleted { get; set; } = false;
+        public string Leave_Type { get; set; } = string.Empty;
+        public string LeaveRequestNote { get; set; } = string.Empty;
         public DateTime Start_Date { get; set; }
         public DateTime End_Date { get; set; }
         public string Reason { get; set; } = string.Empty;
