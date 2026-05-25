@@ -100,7 +100,6 @@ namespace OTMS.Data
                 .WithMany()
                 .HasForeignKey(e => e.LeaveId)
                 .OnDelete(DeleteBehavior.Restrict);
-
         }
     }
 }
