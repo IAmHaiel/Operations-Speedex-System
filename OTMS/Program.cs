@@ -143,6 +143,8 @@ builder.Services.AddScoped<ILeaveRequest, LeaveRequestService>();
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IEmergencyOverrideService, EmergencyOverrideService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
 static async System.Threading.Tasks.Task SeedSystemAdminAsync(OTMSDbContext context)
 {

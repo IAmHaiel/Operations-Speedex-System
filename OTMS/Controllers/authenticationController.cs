@@ -31,7 +31,7 @@ namespace OTMS.Controllers
         [ProducesResponseType(500)]
         public async Task<ActionResult<TokenResponseDTO>> Login(EmployeeLoginDTO request)
         {
-            await lrService.UpdateEmployeeAvailabilityStatusesAsync();
+            var employee = await 
 
             var result = await authService.LoginAsync(request);
             if (result is null)
