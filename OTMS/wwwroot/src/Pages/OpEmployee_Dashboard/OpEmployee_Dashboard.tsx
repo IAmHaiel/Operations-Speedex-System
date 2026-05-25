@@ -1253,8 +1253,21 @@ export default function EmployeeDashboard() {
     const [loadingUser, setLoadingUser] = useState(true);
     const navigate = useNavigate();
 
-    const handleLogout = () => {
-        ['employeeId', 'refreshToken', 'authToken', 'employeeName', 'contactNumber', 'role'].forEach(k => localStorage.removeItem(k));
+    const handleLogout = async () => {
+        const token = localStorage.getItem('authToken');
+
+        if (token) {
+            await fetch('/api/authentication/logout', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            }).catch(() => { }); // non-fatal — clear localStorage regardless
+        }
+
+        ['employeeId', 'refreshToken', 'authToken', 'employeeName', 'contactNumber', 'role']
+            .forEach(k => localStorage.removeItem(k));
         navigate('/');
     };
 
