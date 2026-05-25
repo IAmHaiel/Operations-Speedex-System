@@ -9,7 +9,6 @@
         public string PasswordHash { get; set; } = string.Empty;
         public string AccountStatus { get; set; } = "Active";
         public int FailedLoginAttempts { get; set; }
-        public DateTime? EmergencyOverrideDuration { get; set; }
 
         public string? RefreshToken { get; set; }
         public DateTime? RefreshTokenExpiryTime { get; set; }
