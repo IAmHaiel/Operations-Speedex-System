@@ -83,6 +83,7 @@ namespace OTMS.Controllers
         /// <response code="200">Refresh Token successful. Access token and Refresh Token returned.</response>
         /// <response code="401">Invalid request payload or missing fields.</response>
         /// <response code="500">Unexpected server error.</response>
+        [Authorize]
         [HttpPost("refresh-token")]
         [ProducesResponseType(typeof(RefreshTokenRequestDTO), 200)]
         [ProducesResponseType(typeof(RefreshTokenRequestDTO), 401)]
