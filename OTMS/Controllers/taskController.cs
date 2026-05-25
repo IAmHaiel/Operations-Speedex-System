@@ -178,5 +178,29 @@ namespace OTMS.Controllers
             }
         }
 
+        /// <summary>
+        /// Deletes a task by its ID. Only authenticated users with the "OperationsAdmin" role can delete tasks. The endpoint will return a success message if the task is deleted, or a not found message if the task does not exist. If an error occurs during deletion, it will return a bad request with the error message.
+        /// </summary>
+        [Authorize(Roles = "OperationAdmin")]
+        [HttpDelete("{taskId}/delete-task")]
+        public async Task<IActionResult> DeleteTask(Guid taskId)
+        {
+            try
+            {
+                var result = await taskService.DeleteTaskAsync(taskId);
+                if (result.IsDeleted)
+                {
+                    return Ok(result);
+                }
+                else
+                {
+                    return NotFound(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }
