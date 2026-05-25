@@ -14,6 +14,7 @@ namespace OTMS.Data
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<ActivityLog> ActivityLogs { get; set; }
         public DbSet<LeaveRequest> LeaveRequests { get; set; }
+        public DbSet<EmergencyOverrideRequest> EmergencyOverrideRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -80,6 +81,26 @@ namespace OTMS.Data
                 .WithMany(a => a.ApprovedLeaveRequests)
                 .HasForeignKey(lr => lr.Approved_By)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            // Emergency Override Request Relationships
+            modelBuilder.Entity<EmergencyOverrideRequest>()
+                .HasOne(e => e.RequestedBy)
+                .WithMany(a => a.RequestedEmergencyOverrides)
+                .HasForeignKey(e => e.RequestedById)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EmergencyOverrideRequest>()
+                .HasOne(e => e.ApprovedBy)
+                .WithMany(a => a.ApprovedEmergencyOverrides)
+                .HasForeignKey(e => e.ApprovedById)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<EmergencyOverrideRequest>()
+                .HasOne(e => e.LeaveRequest)
+                .WithMany()
+                .HasForeignKey(e => e.LeaveId)
+                .OnDelete(DeleteBehavior.Restrict);
+
         }
     }
 }

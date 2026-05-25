@@ -7,7 +7,7 @@ namespace OTMS.Entities.Models
         [Key]
         public Guid EmergencyOverrideId { get; set; }
 
-        public Guid RequedtedById { get; set; }
+        public Guid RequestedById { get; set; }
         public Guid LeaveId { get; set; }
         public Guid? ApprovedById { get; set; }
 
@@ -18,7 +18,7 @@ namespace OTMS.Entities.Models
         public DateTime? OverrideUntil { get; set; }
 
         // Navigation properties
-        public Account Account { get; set; } = null!;
+        public Account RequestedBy { get; set; } = null!;
         public Account? ApprovedBy { get; set; }
 
         public LeaveRequest LeaveRequest { get; set; } = null!;
