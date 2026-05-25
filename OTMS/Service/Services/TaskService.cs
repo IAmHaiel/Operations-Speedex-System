@@ -355,5 +355,32 @@ namespace OTMS.Service.Services
                 CreatedAt = task.CreatedAt
             }).ToList();
         }
+
+        public async Task<TaskDeleteResponseDTO> DeleteTaskAsync(Guid taskId)
+        {
+            // Get the task to be deleted
+            var task = await context.Tasks
+                .FirstOrDefaultAsync(t => t.TaskId == taskId);
+
+            if (task == null)
+            {
+                throw new KeyNotFoundException("Task not found.");
+            }
+
+            // Change the isDeleted flag to true
+            task.Deleted = true;
+
+            // Save changes to database
+            await context.SaveChangesAsync();
+
+            // Return a response indicating successful deletion
+            return new TaskDeleteResponseDTO
+            {
+                IsDeleted = true,
+                Message = "Task deleted successfully."
+            };
+
+            //throw new NotImplementedException();
+        }
     }
 }

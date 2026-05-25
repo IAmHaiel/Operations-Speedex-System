@@ -178,8 +178,10 @@ namespace OTMS.Service.Services
                 throw new InvalidOperationException("Cannot delete a System Admin account.");
             }
 
-            // Delete the employee's account
-            context.Employees.Remove(exist);
+            // Soft Delete the employee's account
+            exist.Account.AccountStatus = "Deleted";
+
+            // Save changes to database
             await context.SaveChangesAsync();
 
             return new DeleteUserResponseDTO

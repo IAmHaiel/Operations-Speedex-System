@@ -1,0 +1,207 @@
+﻿import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Loader2 } from 'lucide-react';
+import './NotificationBell.css';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface NotificationItem {
+    notificationId: string;
+    taskId: string | null;
+    notificationType: string;
+    message: string;
+    isRead: boolean;
+    createdAt: string;
+}
+
+interface NotificationBellProps {
+    apiEndpoint: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getTypeBadge(type: string): { label: string; cls: string } {
+    switch (type) {
+        case 'TaskAssigned':
+            return { label: 'Task assigned', cls: 'task-assigned' };
+        case 'TaskDeadlineApproaching':
+            return { label: 'Deadline', cls: 'deadline' };
+        default:
+            return { label: type, cls: 'default' };
+    }
+}
+
+function timeAgo(iso: string): string {
+    const diff = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export default function NotificationBell({ apiEndpoint }: NotificationBellProps) {
+    const [notifs, setNotifs] = useState<NotificationItem[]>([]);
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [dropdownPos, setDropdownPos] = useState({ top: 0, right: 0 });
+    const wrapRef = useRef<HTMLDivElement>(null);
+
+    const unreadCount = notifs.filter(n => !n.isRead).length;
+
+    const fetchNotifs = async () => {
+        try {
+            const token = localStorage.getItem('authToken');
+            const res = await fetch(apiEndpoint, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (!res.ok) throw new Error();
+            const data: NotificationItem[] = await res.json();
+            setNotifs(data);
+        } catch {
+            // silently fail
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchNotifs();
+        const interval = setInterval(fetchNotifs, 30000);
+        return () => clearInterval(interval);
+    }, [apiEndpoint]);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const handleOpen = () => {
+        if (!open && wrapRef.current) {
+            const rect = wrapRef.current.getBoundingClientRect();
+            setDropdownPos({
+                top: rect.bottom + window.scrollY + 6,
+                right: window.innerWidth - rect.right,
+            });
+        }
+        setOpen(o => !o);
+    };
+
+    const markAsRead = async (id: string) => {
+        setNotifs(prev => prev.map(n =>
+            n.notificationId === id ? { ...n, isRead: true } : n
+        ));
+        try {
+            const token = localStorage.getItem('authToken');
+            await fetch(`/api/notification/${id}/read`, {
+                method: 'PATCH',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+        } catch { }
+    };
+
+    const markAllAsRead = async () => {
+        const unread = notifs.filter(n => !n.isRead);
+        setNotifs(prev => prev.map(n => ({ ...n, isRead: true })));
+        const token = localStorage.getItem('authToken');
+        await Promise.allSettled(
+            unread.map(n =>
+                fetch(`/api/notification/${n.notificationId}/read`, {
+                    method: 'PATCH',
+                    headers: { Authorization: `Bearer ${token}` },
+                })
+            )
+        );
+    };
+
+    return (
+        <div ref={wrapRef} className="notif-wrap">
+            {/* ── Bell Button ── */}
+            <button
+                className="notif-btn"
+                onClick={handleOpen}
+                aria-label="Notifications"
+            >
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18" height="18"
+                    viewBox="0 0 24 24"
+                    fill="#4318ff"
+                    stroke="#4318ff"
+                    strokeWidth="1"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                >
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </svg>
+                {unreadCount > 0 && (
+                    <span className="notif-badge">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                )}
+            </button>
+
+            {/* ── Dropdown (Portal) ── */}
+            {open && createPortal(
+                <div
+                    className="notif-dropdown"
+                    style={{ top: dropdownPos.top, right: dropdownPos.right }}
+                >
+                    {/* Header */}
+                    <div className="notif-header">
+                        <span className="notif-header-title">Notifications</span>
+                        {unreadCount > 0 && (
+                            <button className="notif-mark-all-btn" onClick={markAllAsRead}>
+                                Mark all as read
+                            </button>
+                        )}
+                    </div>
+
+                    {/* List */}
+                    <div className="notif-list">
+                        {loading ? (
+                            <div className="notif-loading">
+                                <Loader2 size={16} className="spin" /> Loading…
+                            </div>
+                        ) : notifs.length === 0 ? (
+                            <div className="notif-empty">No notifications</div>
+                        ) : notifs.map(n => {
+                            const badge = getTypeBadge(n.notificationType);
+                            return (
+                                <div
+                                    key={n.notificationId}
+                                    className={`notif-item ${n.isRead ? 'read' : 'unread'}`}
+                                    onClick={() => !n.isRead && markAsRead(n.notificationId)}
+                                >
+                                    <div className={`notif-dot ${n.isRead ? 'read' : 'unread'}`} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <span className={`notif-type-badge ${badge.cls}`}>
+                                            {badge.label}
+                                        </span>
+                                        <div className="notif-message">{n.message}</div>
+                                        <div className="notif-time">{timeAgo(n.createdAt)}</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Footer */}
+                    {notifs.length > 0 && (
+                        <div className="notif-footer">
+                            {notifs.filter(n => n.isRead).length} of {notifs.length} read
+                        </div>
+                    )}
+                </div>,
+                document.body
+            )}
+        </div>
+    );
+}
