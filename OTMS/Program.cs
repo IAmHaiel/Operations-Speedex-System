@@ -102,6 +102,12 @@ builder.Services.AddAuthorization(options =>
             Roles.Encoder
         ));
 
+    options.AddPolicy("HigherRankAccess", policy =>
+    policy.RequireRole(
+        Roles.SystemAdmin,
+        Roles.OperationAdmin
+    ));
+
     options.AddPolicy("SystemAdminAccess", policy =>
     policy.RequireRole(
         Roles.SystemAdmin
