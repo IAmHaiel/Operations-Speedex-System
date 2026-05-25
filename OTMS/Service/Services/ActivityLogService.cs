@@ -8,6 +8,35 @@ namespace OTMS.Service.Services
 {
     public class ActivityLogService(OTMSDbContext context) : IActivityLogService
     {
+        public async Task<string> GetOnlineActivityAsync(Guid employeeId)
+        {
+            var account = await context.Accounts
+                .Include(a => a.Employee)
+                .Include(a => a.ActivityLogs)
+                .FirstOrDefaultAsync(a => a.Employee.EmployeeId == employeeId);
+
+            if (account is null || account.Employee is null)
+            {
+                throw new Exception("Employee not found.");
+            }
+
+            var latestActivity = account.ActivityLogs
+                .OrderByDescending(al => al.CreatedAt)
+                .FirstOrDefault();
+
+            if (latestActivity is null)
+            {
+                return "Offline";
+            }
+
+            return latestActivity.ActivityType switch
+            {
+                "Login" => "Online",
+                "Logout" => "Offline",
+                _ => "Offline"
+            };
+        }
+
         public async Task<PresenceResponseDTO> GetPresenceAsync(Guid employeeId)
         {
             var account = await context.Accounts

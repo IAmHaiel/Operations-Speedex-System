@@ -26,6 +26,24 @@ namespace OTMS.Controllers
                 return NotFound(new { message = ex.Message });
             }
         }
+
+        /// <summary>   
+        /// Get the online activity (Online|Offline) of an Account, it can be accessed under Operational Team.
+        /// </summary>
+        [Authorize(Policy = "OperationalTeamAccess")]
+        [HttpGet("online-activity/{employeeId}")]
+        public async Task<ActionResult<string>> GetEmployeeOnlineActivity(Guid employeeId)
+        {
+            try
+            {
+                var onlineActivity = await activityLogService.GetOnlineActivityAsync(employeeId);
+                return Ok(onlineActivity);
+            } 
+            catch (Exception ex)
+            {
+                return NotFound(new {message = ex.Message});
+            }
+        }
     }
 
 }

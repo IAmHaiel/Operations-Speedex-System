@@ -7,5 +7,6 @@ namespace OTMS.Service.Interfaces
     {
         Task<ActivityLogResponseDTO> LogActivityAsync(Guid AccountId, string ActivityType, string Description);
         Task<PresenceResponseDTO> GetPresenceAsync(Guid employeeId);
+        Task<string> GetOnlineActivityAsync(Guid employeeId);
     }
 }
