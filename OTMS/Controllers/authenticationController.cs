@@ -13,7 +13,7 @@ namespace OTMS.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class authenticationController(OTMSDbContext context, IAuthService authService, ILeaveRequest lrService, IActivityLogService activitylogService) : ControllerBase
+    public class authenticationController(OTMSDbContext context, IAuthService authService, ILeaveRequest lrService, IActivityLogService activitylogService, IEmployeeService employeeService) : ControllerBase
     {
 
         // Authentication APIs
@@ -31,7 +31,14 @@ namespace OTMS.Controllers
         [ProducesResponseType(500)]
         public async Task<ActionResult<TokenResponseDTO>> Login(EmployeeLoginDTO request)
         {
-            await lrService.UpdateEmployeeAvailabilityStatusesAsync();
+            var employee = await employeeService.GetEmployeeByEmployeeNumberAsync(request.EmployeeNumber);
+
+            if(employee is null || employee.Account is null)
+            {
+                return Unauthorized(new { message = "Invalid Employee ID or password." });
+            }
+
+            await lrService.UpdateEmployeeAvailabilityStatusesAsync(employee.Account.AccountId);
 
             var result = await authService.LoginAsync(request);
             if (result is null)
@@ -83,6 +90,7 @@ namespace OTMS.Controllers
         /// <response code="200">Refresh Token successful. Access token and Refresh Token returned.</response>
         /// <response code="401">Invalid request payload or missing fields.</response>
         /// <response code="500">Unexpected server error.</response>
+        [Authorize]
         [HttpPost("refresh-token")]
         [ProducesResponseType(typeof(RefreshTokenRequestDTO), 200)]
         [ProducesResponseType(typeof(RefreshTokenRequestDTO), 401)]

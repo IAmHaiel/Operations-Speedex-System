@@ -11,7 +11,7 @@ namespace OTMS.Controllers
     public class notificationController(INotificationService notificationService) : ControllerBase
     {
         // Get Notifications
-        [Authorize(Roles = "OperationAdmin,Coordinator,Encoder")]
+        [Authorize(Policy = "OperationalTeamAccess")]
         [HttpGet("my-notifications")]
         public async Task<
             ActionResult<List<NotificationResponseDTO>>> GetMyNotifications()
@@ -31,7 +31,7 @@ namespace OTMS.Controllers
         }
 
         // Mark as Read
-        [Authorize(Roles = "OperationAdmin,Coordinator,Encoder")]
+        [Authorize(Policy = "OperationalTeamAccess")]
         [HttpPatch("{notificationId}/read")]
         public async Task<IActionResult> MarkAsRead(Guid notificationId)
         {

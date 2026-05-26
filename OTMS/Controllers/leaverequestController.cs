@@ -14,7 +14,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// The system shall allow Operational Team members to submit a formal time-off request by specifying the start date, end date, and reason.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin,OperationAdmin,Coordinator,Encoder")]
+        [Authorize(Policy = "ManagementAccess")]
         [HttpPost("create-leave-request")]
         public async Task<IActionResult> CreateLeaveRequest([FromBody] CreateLeaveRequestDTO request)
         {
@@ -32,7 +32,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Gets a list of all leave requests in the system. This endpoint is restricted to users with the "OperationAdmin" role, ensuring that only authorized personnel can access this sensitive information.
         /// </summary>
-        [Authorize(Roles = "OperationAdmin")]
+        [Authorize(Policy = "OperationAdminAccess")]
         [HttpGet("get-all-leave-requests")]
         public async Task<IActionResult> GetAllLeaveRequests()
         {
@@ -43,7 +43,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Update Leave Status of the leave request. This endpoint is restricted to users with the "OperationAdmin" role, ensuring that only authorized personnel can update the status of leave requests.
         /// </summary>
-        [Authorize(Roles = "OperationAdmin")]
+        [Authorize(Policy = "OperationAdminAccess")]
         [HttpPut("{leaveId}/status")]
         public async Task<IActionResult> UpdateLeaveStatus(Guid leaveId, [FromBody] UpdateLeaveStatusDTO request)
         {

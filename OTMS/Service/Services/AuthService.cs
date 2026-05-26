@@ -49,7 +49,19 @@ namespace OTMS.Service.Services
 
             if (accountStatus == "On Leave")
             {
-                throw new Exception("Your account is currently on leave. Please contact your administrator for more information.");
+                var hasEmergencyOverride = await context.EmergencyOverrideRequests
+                    .AnyAsync(e =>
+                        e.RequestedById == employee.Account.AccountId &&
+                        e.Status == "Approved" &&
+                        e.OverrideUntil > DateTime.UtcNow);
+
+               if (!hasEmergencyOverride)
+                {
+                    throw new Exception("Your account is currently on leave.");
+                }
+
+               employee.Account.AccountStatus = "Emergency Overriden";
+               await context.SaveChangesAsync();
             }
 
             var verificationResult =
@@ -174,6 +186,11 @@ namespace OTMS.Service.Services
             var passwordHasher = new PasswordHasher<Account>();
 
             var generatedUserPassword = PasswordGenerator.Generate();
+
+            if (generatedPassword.Length < PasswordLength.MinimumLength || generatedPassword.Length > PasswordLength.MaximumLength)
+            {
+                throw new InvalidOperationException("Generated password must be atleast 15 characters long.");
+            }
 
             account.PasswordHash = passwordHasher.HashPassword(
                 account,

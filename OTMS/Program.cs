@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using OTMS.Common.Constraints;
 using OTMS.Data;
 using OTMS.Entities.Models;
 using OTMS.Service.Interfaces;
@@ -84,7 +85,53 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("ManagementAccess", policy =>
+        policy.RequireRole(
+            Roles.SystemAdmin,
+            Roles.OperationAdmin,
+            Roles.Coordinator,
+            Roles.Encoder
+        ));
+
+    options.AddPolicy("OperationalTeamAccess", policy =>
+        policy.RequireRole(
+            Roles.OperationAdmin,
+            Roles.Coordinator,
+            Roles.Encoder
+        ));
+
+    options.AddPolicy("HigherRankAccess", policy =>
+    policy.RequireRole(
+        Roles.SystemAdmin,
+        Roles.OperationAdmin
+    ));
+
+    options.AddPolicy("SystemAdminAccess", policy =>
+    policy.RequireRole(
+        Roles.SystemAdmin
+    ));
+
+    options.AddPolicy("OperationAdminAccess", policy =>
+        policy.RequireRole(
+            Roles.OperationAdmin
+        ));
+
+    options.AddPolicy("EncoderAccess", policy =>
+        policy.RequireRole(
+            Roles.Encoder
+        ));
+
+    options.AddPolicy("CoordinatorAccess", policy =>
+        policy.RequireRole(
+            Roles.Coordinator
+        ));
+});
+
 builder.Services.AddDbContext<OTMSDbContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+
 
 
 // Registered Services
@@ -96,6 +143,8 @@ builder.Services.AddScoped<ILeaveRequest, LeaveRequestService>();
 builder.Services.AddScoped<IActivityLogService, ActivityLogService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IEmergencyOverrideService, EmergencyOverrideService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
 static async System.Threading.Tasks.Task SeedSystemAdminAsync(OTMSDbContext context)
 {

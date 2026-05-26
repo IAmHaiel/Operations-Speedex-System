@@ -10,5 +10,6 @@ namespace OTMS.Service.Interfaces
         Task<TaskResponseDTO> ReopenTaskAsync(Guid taskId);
         Task<TaskResponseDTO> UpdateTaskProgressAsync(Guid taskId, UpdateTaskProgressDTO request);
         Task<List<TaskResponseDTO>> GetMyTasksAsync();
+        Task<TaskDeleteResponseDTO> DeleteTaskAsync(Guid taskId);
     }
 }

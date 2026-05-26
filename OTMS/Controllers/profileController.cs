@@ -13,7 +13,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// View Profile from the System. Only accessible to users that are within the scoped role and authenticated.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin,OperationAdmin,Coordinator,Encoder")]
+        [Authorize(Policy = "ManagementAccess")]
         [HttpGet("view-profile")]
         public async Task<IActionResult> ViewProfile()
         {
@@ -28,7 +28,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Updates Profile to the System. Only accessible to users that are within the scoped role and authenticated.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin,OperationAdmin,Coordinator,Encoder")]
+        [Authorize(Policy = "ManagementAccess")]
         [HttpPut("update-profile")]
         public async Task<IActionResult> UpdateProfile(UpdateInformationDTO request)
         {
@@ -43,7 +43,7 @@ namespace OTMS.Controllers
         /// <summary>
         /// Changes Password of the User's Account to the System. Only accessible to users that are within the scoped role and authenticated.
         /// </summary>
-        [Authorize(Roles = "SystemAdmin,OperationAdmin,Coordinator,Encoder")]
+        [Authorize(Policy = "ManagementAccess")]
         [HttpPatch("change-password")]
         public async Task<IActionResult> ChangePassword(ChangePasswordDTO request)
         {
