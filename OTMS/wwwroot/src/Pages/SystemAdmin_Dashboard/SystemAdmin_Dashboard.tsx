@@ -29,6 +29,7 @@ import {
     CalendarDays,
     Filter,
     Copy,
+    ShieldAlert,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './SystemAdmin_Dashboard.css';
@@ -38,7 +39,7 @@ import { useToast } from '../../components/Toast/Toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type NavTab = 'dashboard' | 'employees' | 'delivery' | 'analytics' | 'profile';
+type NavTab = 'dashboard' | 'employees' | 'delivery' | 'analytics' | 'emergency' | 'profile';
 
 interface EmployeeRegisterDTO {
     employeeNumber: string;
@@ -112,6 +113,7 @@ const NAV_ITEMS: { tab: NavTab; icon: any; label: string }[] = [
     { tab: 'delivery', icon: Truck, label: 'Delivery' },
     { tab: 'analytics', icon: BarChart3, label: 'Analytics' },
     { tab: 'profile', icon: UserCircle2, label: 'Profile' },
+    { tab: 'emergency', icon: ShieldAlert, label: 'Emergency Overrides' },
 ];
 
 const STAT_CARDS = [
@@ -1906,6 +1908,363 @@ function LeaveManagementTab() {
     );
 }
 
+// ─── Emergency Overrides Tab ──────────────────────────────────────────────────
+
+type OverrideStatus = 'Pending' | 'Approved' | 'Rejected';
+
+interface EmergencyOverride {
+    emergencyOverrideId: string;
+    requestedById: string;
+    employeeName: string;
+    employeeNumber: string;
+    leaveId: string;
+    status: OverrideStatus;
+    reason: string;
+    requestedAt: string;
+    approvedAt?: string;
+    overrideUntil?: string;
+}
+
+function EmergencyOverridesTab() {
+    const [overrides, setOverrides] = useState<EmergencyOverride[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [filterStatus, setFilterStatus] = useState<'All' | OverrideStatus>('Pending');
+    const [search, setSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [actionModal, setActionModal] = useState<{
+        override: EmergencyOverride;
+        action: 'Approved' | 'Rejected';
+    } | null>(null);
+    const [overrideUntil, setOverrideUntil] = useState('');
+    const [note, setNote] = useState('');
+    const [submitting, setSubmitting] = useState(false);
+    const [actionError, setActionError] = useState('');
+
+    const PAGE_SIZE = 7;
+
+    useEffect(() => {
+        const token = localStorage.getItem('authToken');
+        fetch('/api/emergency_override_controls/all', {
+            headers: { 'Authorization': `Bearer ${token}` },
+        })
+            .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+            .then((data: any[]) => {
+                setOverrides(Array.isArray(data) ? data.map(o => ({
+                    emergencyOverrideId: o.emergencyOverrideId,
+                    requestedById: o.requestedById,
+                    employeeName: o.employeeName ?? '—',
+                    employeeNumber: o.employeeNumber ?? '—',
+                    leaveId: o.leaveId,
+                    status: o.status,
+                    reason: o.reason,
+                    requestedAt: o.requestedAt,
+                    approvedAt: o.approvedAt,
+                    overrideUntil: o.overrideUntil,
+                })) : []);
+            })
+            .catch(() => setOverrides([]))
+            .finally(() => setLoading(false));
+    }, []);
+
+    const filtered = overrides.filter(o => {
+        const matchStatus = filterStatus === 'All' || o.status === filterStatus;
+        const matchSearch = !search
+            || o.employeeName.toLowerCase().includes(search.toLowerCase())
+            || o.employeeNumber.toLowerCase().includes(search.toLowerCase());
+        return matchStatus && matchSearch;
+    });
+
+    useEffect(() => { setCurrentPage(1); }, [filterStatus, search]);
+
+    const sorted = [...filtered].sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+    const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+    const paginated = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+    const pendingCount = overrides.filter(o => o.status === 'Pending').length;
+    const approvedCount = overrides.filter(o => o.status === 'Approved').length;
+    const rejectedCount = overrides.filter(o => o.status === 'Rejected').length;
+
+    const handleAction = async () => {
+        if (!actionModal) return;
+        if (actionModal.action === 'Approved' && !overrideUntil) {
+            setActionError('Please set an override expiry date and time.');
+            return;
+        }
+        setSubmitting(true);
+        setActionError('');
+        try {
+            const token = localStorage.getItem('authToken');
+            const res = await fetch('/api/emergency_override_controls/approve', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({
+                    emergencyOverrideId: actionModal.override.emergencyOverrideId,
+                    status: actionModal.action,
+                    overrideUntil: actionModal.action === 'Approved' ? new Date(overrideUntil).toISOString() : null,
+                }),
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || 'Action failed.');
+            }
+            setOverrides(prev => prev.map(o =>
+                o.emergencyOverrideId === actionModal.override.emergencyOverrideId
+                    ? { ...o, status: actionModal.action, overrideUntil: overrideUntil || undefined }
+                    : o
+            ));
+            setActionModal(null);
+            setOverrideUntil('');
+            setNote('');
+        } catch (err: any) {
+            setActionError(err.message ?? 'Something went wrong.');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const getPageNumbers = () => {
+        const pages: (number | '...')[] = [];
+        if (totalPages <= 5) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            if (currentPage > 3) pages.push('...');
+            const start = Math.max(2, currentPage - 1);
+            const end = Math.min(totalPages - 1, currentPage + 1);
+            for (let i = start; i <= end; i++) pages.push(i);
+            if (currentPage < totalPages - 2) pages.push('...');
+            pages.push(totalPages);
+        }
+        return pages;
+    };
+
+    const statusMeta: Record<OverrideStatus, { label: string; cls: string; icon: React.ReactNode }> = {
+        Pending: { label: 'Pending', cls: 'pending-badge', icon: <Clock size={12} /> },
+        Approved: { label: 'Approved', cls: 'active', icon: <CheckCircle2 size={12} /> },
+        Rejected: { label: 'Rejected', cls: 'deactivated', icon: <X size={12} /> },
+    };
+
+    return (
+        <div className="dashboard-content">
+
+            {/* ── Stats ── */}
+            <div className="stats-row" style={{ marginBottom: 20 }}>
+                {[
+                    { icon: Clock, bg: 'bg-warning', label: 'PENDING', value: pendingCount, sub: 'Awaiting review' },
+                    { icon: CheckCircle2, bg: 'bg-success', label: 'APPROVED', value: approvedCount, sub: 'Access granted' },
+                    { icon: AlertCircle, bg: 'bg-danger', label: 'REJECTED', value: rejectedCount, sub: 'Access denied' },
+                    { icon: ShieldAlert, bg: 'bg-primary', label: 'TOTAL', value: overrides.length, sub: 'All override requests' },
+                ].map(({ icon: Icon, bg, label, value, sub }) => (
+                    <div key={label} className="stat-card">
+                        <div className={`stat-icon ${bg}`}><Icon size={18} /></div>
+                        <div className="stat-text">
+                            <p className="stat-label">{label}</p>
+                            <h3 className="stat-value">{value}</h3>
+                            <small>{sub}</small>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* ── Table Card ── */}
+            <div className="card employees-table-card" style={{ minHeight: 520 }}>
+                <div className="card-header">
+                    <h3>Emergency Override Requests</h3>
+                    <span style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                        {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                    </span>
+                </div>
+
+                <div className="filter-bar">
+                    <div className="search-input-wrap">
+                        <Search size={14} className="search-icon" />
+                        <input
+                            type="text"
+                            placeholder="Search by name or ID…"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="search-input"
+                        />
+                    </div>
+                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)}>
+                        <option value="Pending">Pending</option>
+                        <option value="All">All Statuses</option>
+                        <option value="Approved">Approved</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+
+                <div className="data-table-wrap">
+                    <table className="data-table">
+                        <thead>
+                            <tr>
+                                <th>EMPLOYEE</th>
+                                <th>REASON</th>
+                                <th>REQUESTED</th>
+                                <th>OVERRIDE UNTIL</th>
+                                <th>STATUS</th>
+                                <th>ACTIONS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={6}>
+                                    <div className="empty-state"><Loader2 size={20} className="spin" /><p>Loading requests…</p></div>
+                                </td></tr>
+                            ) : paginated.length === 0 ? (
+                                <tr><td colSpan={6}>
+                                    <div className="empty-state"><ShieldAlert size={20} /><p>No override requests match your filters</p></div>
+                                </td></tr>
+                            ) : paginated.map(o => {
+                                const meta = statusMeta[o.status];
+                                return (
+                                    <tr key={o.emergencyOverrideId}>
+                                        <td>
+                                            <div className="emp-name-cell">
+                                                <div className="emp-avatar">{o.employeeName.charAt(0).toUpperCase()}</div>
+                                                <div>
+                                                    <div style={{ fontWeight: 600, fontSize: 13 }}>{o.employeeName}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{o.employeeNumber}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td style={{ fontSize: 13, maxWidth: 200 }}>
+                                            <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                {o.reason}
+                                            </span>
+                                        </td>
+                                        <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                            {new Date(o.requestedAt).toLocaleString()}
+                                        </td>
+                                        <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                            {o.overrideUntil ? new Date(o.overrideUntil).toLocaleString() : '—'}
+                                        </td>
+                                        <td>
+                                            <span className={`status-badge ${meta.cls}`}
+                                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                                {meta.icon}{meta.label}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {o.status === 'Pending' ? (
+                                                <div style={{ display: 'flex', gap: 6 }}>
+                                                    <button
+                                                        className="btn btn-xs"
+                                                        style={{ background: 'rgba(5,205,153,0.12)', color: '#05cd99', border: '1px solid rgba(5,205,153,0.3)', fontWeight: 600 }}
+                                                        onClick={() => { setActionModal({ override: o, action: 'Approved' }); setOverrideUntil(''); setNote(''); setActionError(''); }}
+                                                    >
+                                                        <CheckCircle2 size={11} /> Approve
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-xs btn-danger"
+                                                        onClick={() => { setActionModal({ override: o, action: 'Rejected' }); setOverrideUntil(''); setNote(''); setActionError(''); }}
+                                                    >
+                                                        <X size={11} /> Reject
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                    {o.status === 'Approved' ? 'Access granted' : 'Access denied'}
+                                                </span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* ── Pagination ── */}
+                {!loading && filtered.length > 0 && (
+                    <div className="pagination-bar">
+                        <span className="pagination-info">
+                            Showing {Math.min((currentPage - 1) * PAGE_SIZE + 1, filtered.length)}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                        </span>
+                        <div className="pagination-controls">
+                            <button className="page-btn page-btn-nav" onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}><ChevronLeft size={15} /></button>
+                            {getPageNumbers().map((p, i) =>
+                                p === '...' ? <span key={`e-${i}`} className="page-ellipsis">…</span> :
+                                    <button key={p} className={`page-btn${currentPage === p ? ' active' : ''}`} onClick={() => setCurrentPage(p as number)}>{p}</button>
+                            )}
+                            <button className="page-btn page-btn-nav" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}><ChevronRight size={15} /></button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* ── Action Modal ── */}
+            {actionModal && (
+                <div className="modal-overlay" onClick={() => setActionModal(null)}>
+                    <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+                        <div className="modal-header">
+                            <div>
+                                <h3>{actionModal.action === 'Approved' ? 'Approve Override Request' : 'Reject Override Request'}</h3>
+                                <p className="modal-subtitle">
+                                    {actionModal.action === 'Approved'
+                                        ? 'Set how long the employee can access the system.'
+                                        : 'Confirm rejection of this emergency override request.'}
+                                </p>
+                            </div>
+                            <button className="icon-btn" onClick={() => setActionModal(null)}><X size={16} /></button>
+                        </div>
+
+                        {/* Employee info */}
+                        <div style={{ background: 'var(--bg-secondary, #f8f9fc)', borderRadius: 10, padding: '12px 14px', marginBottom: 16, border: '1px solid var(--border)', fontSize: 13 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>Employee</span>
+                                <strong>{actionModal.override.employeeName}</strong>
+                            </div>
+                            <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>Reason</span>
+                                <span style={{ maxWidth: 260, textAlign: 'right' }}>{actionModal.override.reason}</span>
+                            </div>
+                        </div>
+
+                        {actionModal.action === 'Approved' && (
+                            <div className="field" style={{ marginBottom: 16 }}>
+                                <label>Override Access Until</label>
+                                <input
+                                    type="datetime-local"
+                                    value={overrideUntil}
+                                    onChange={e => { setOverrideUntil(e.target.value); setActionError(''); }}
+                                    min={new Date().toISOString().slice(0, 16)}
+                                />
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
+                                    The employee's access will automatically expire at this time.
+                                </span>
+                            </div>
+                        )}
+
+                        {actionError && (
+                            <div className="form-api-error" style={{ marginBottom: 12 }}>
+                                <AlertCircle size={14} /><span>{actionError}</span>
+                            </div>
+                        )}
+
+                        <div className="modal-actions">
+                            <button className="btn" onClick={() => setActionModal(null)} disabled={submitting}>Cancel</button>
+                            <button
+                                className={`btn ${actionModal.action === 'Approved' ? 'btn-primary' : 'btn-danger'}`}
+                                onClick={handleAction}
+                                disabled={submitting}
+                            >
+                                {submitting
+                                    ? <><Loader2 size={13} className="spin" /> Processing…</>
+                                    : actionModal.action === 'Approved'
+                                        ? <><CheckCircle2 size={13} /> Approve Access</>
+                                        : <><X size={13} /> Reject Request</>
+                                }
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 // ─── Root Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -1996,6 +2355,7 @@ export default function Dashboard() {
         delivery: 'Delivery',
         analytics: 'Analytics',
         profile: 'My Profile',
+        emergency: 'Emergency Overrides',
     };
 
     return (
@@ -2093,6 +2453,7 @@ export default function Dashboard() {
                         </div>
                     </div>
                 )}
+                {activeTab === 'emergency' && <EmergencyOverridesTab />}
             </main>
 
             {/* ── Modals ── */}
