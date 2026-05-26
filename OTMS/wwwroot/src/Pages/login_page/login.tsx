@@ -98,8 +98,29 @@ export default function Login() {
             if (!response.ok) {
                 if (response.status === 401) {
                     const message = data?.message?.toLowerCase() ?? '';
-                    if (message.includes('deactivated') || message.includes('locked')) {
-                        navigate('/account_locked');
+                    if (
+                        message.includes('deactivated') ||
+                        message.includes('locked') ||
+                        message.includes('on leave')
+                    ) {
+                        navigate('/account_locked', {
+                            state: {
+                                employeeNumber: employeeId.trim(),
+                                employeeName: data?.employeeName ?? data?.EmployeeName ?? '',
+                                reason: data?.message ?? data?.Message ?? '',
+                                password: password,
+                            }
+                        });
+                        return;
+                    }
+
+                    if (message.includes('on leave')) {
+                        navigate('/on_leave_access', {
+                            state: {
+                                employeeNumber: employeeId.trim(),
+                                employeeName: data?.employeeName ?? data?.EmployeeName ?? '',
+                            }
+                        });
                         return;
                     }
                 }

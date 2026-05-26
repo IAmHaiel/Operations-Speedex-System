@@ -33,22 +33,50 @@ namespace OTMS.Controllers
         {
             var employee = await employeeService.GetEmployeeByEmployeeNumberAsync(request.EmployeeNumber);
 
-            if(employee is null || employee.Account is null)
-            {
+            if (employee is null || employee.Account is null)
                 return Unauthorized(new { message = "Invalid Employee ID or password." });
-            }
 
             if (employee.Account.AccountStatus == "Deactivated")
-                return Unauthorized(new { message = "Your account has been deactivated. Please contact your administrator." });
-
-            await lrService.UpdateEmployeeAvailabilityStatusesAsync(employee.Account.AccountId);
-
-            var result = await authService.LoginAsync(request);
-            if (result is null)
             {
-                return Unauthorized(new { message = "Invalid Employee ID or password." });
+                if (employee.Account.FailedLoginAttempts >= 3)
+                    return Unauthorized(new
+                    {
+                        message = "Your account has been locked due to 3 consecutive failed login attempts. Please contact your administrator.",
+                        employeeName = employee.EmployeeName
+                    });
+
+                return Unauthorized(new
+                {
+                    message = "Your account has been deactivated by the System Administrator. Please contact your administrator.",
+                    employeeName = employee.EmployeeName
+                });
             }
-            return Ok(result);
+
+            bool isOnLeave = employee.Account.AccountStatus == "On Leave";
+
+            try
+            {
+                if (!isOnLeave)                                                          
+                    await lrService.UpdateEmployeeAvailabilityStatusesAsync(employee.Account.AccountId);
+
+                var result = await authService.LoginAsync(request);
+                if (result is null)
+                    return Unauthorized(new { message = "Invalid Employee ID or password." });
+
+                return Ok(result);
+            }
+            catch (Exception ex) when (ex.Message.Contains("on leave"))
+            {
+                return Unauthorized(new
+                {
+                    message = "Your account is currently on leave and cannot be accessed.",
+                    employeeName = employee.EmployeeName
+                });
+            }
+            catch (Exception)
+            {
+                return StatusCode(500, new { message = "An unexpected error occurred." });
+            }
         }
 
         /// <summary>
