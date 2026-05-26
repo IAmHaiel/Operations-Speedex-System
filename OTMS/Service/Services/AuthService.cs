@@ -87,6 +87,11 @@ namespace OTMS.Service.Services
                 }
                 return null;
             }
+            
+            if (employee.Account.AccountStatus == "Deactivated")
+            {
+                return null;
+            }
 
             // Save Login Activity
             await activityLogService.LogActivityAsync(

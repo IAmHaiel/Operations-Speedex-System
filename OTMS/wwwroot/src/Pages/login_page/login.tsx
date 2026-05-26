@@ -87,20 +87,27 @@ export default function Login() {
                 }),
             });
 
-            let data: LoginResponse | null = null;
+            let data: any = null;
             try {
                 data = await response.json();
             } catch {
                 throw new Error('Invalid server response');
             }
 
-            if (!response.ok || !data) {
+            // ← CHECK FOR ERRORS FIRST
+            if (!response.ok) {
+                if (response.status === 401) {
+                    const message = data?.message?.toLowerCase() ?? '';
+                    if (message.includes('deactivated') || message.includes('locked')) {
+                        navigate('/account_locked');
+                        return;
+                    }
+                }
                 updateStatus(data?.message || 'Invalid Employee ID or password.', 'error');
                 return;
             }
 
             const normalizedRole = normalizeRole(data.role);
-
             if (!normalizedRole) {
                 updateStatus(`Unknown role: "${data.role}". Contact your administrator.`, 'error');
                 return;

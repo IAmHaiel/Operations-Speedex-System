@@ -38,6 +38,9 @@ namespace OTMS.Controllers
                 return Unauthorized(new { message = "Invalid Employee ID or password." });
             }
 
+            if (employee.Account.AccountStatus == "Deactivated")
+                return Unauthorized(new { message = "Your account has been deactivated. Please contact your administrator." });
+
             await lrService.UpdateEmployeeAvailabilityStatusesAsync(employee.Account.AccountId);
 
             var result = await authService.LoginAsync(request);
