@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using OTMS.Common;
 using OTMS.Common.Constraints;
 using OTMS.Data;
 using OTMS.Entities.DTOs;
@@ -65,12 +66,14 @@ namespace OTMS.Controllers
 
                 return Ok(result);
             }
-            catch (Exception ex) when (ex.Message.Contains("on leave"))
+            catch (OnLeaveException ex)
             {
                 return Unauthorized(new
                 {
                     message = "Your account is currently on leave and cannot be accessed.",
-                    employeeName = employee.EmployeeName
+                    employeeName = ex.EmployeeName,
+                    overrideToken = ex.OverrideToken,
+                    leaveId = ex.LeaveId,              
                 });
             }
             catch (Exception)

@@ -57,6 +57,13 @@ namespace OTMS.Service.Services
 
         public async Task<EmergencyOverrideResponseDTO> RequestOverrideAsync(CreateEmergencyOverrideRequestDTO request)
         {
+            var tokenType = httpContextAccessor
+                .HttpContext?.User
+                .FindFirst("token_type")?.Value;
+
+            if (tokenType != "emergency_override")
+                throw new UnauthorizedAccessException("Invalid token for this operation.");
+
             var accountIdClaim = httpContextAccessor
                 .HttpContext?
                 .User
@@ -64,10 +71,7 @@ namespace OTMS.Service.Services
                 .Value;
 
             if (string.IsNullOrEmpty(accountIdClaim))
-            {
-                throw new UnauthorizedAccessException(
-                    "Invalid user session.");
-            }
+                throw new UnauthorizedAccessException("Invalid user session.");
 
             var accountId = Guid.Parse(accountIdClaim);
 
@@ -78,9 +82,7 @@ namespace OTMS.Service.Services
                     lr.Approval_Status == "Approved");
 
             if (leaveRequest is null)
-            {
                 throw new Exception("You can only request emergency override for approved leave requests.");
-            }
 
             var emergencyOverride = new EmergencyOverrideRequest
             {
@@ -90,9 +92,7 @@ namespace OTMS.Service.Services
                 Status = "Pending"
             };
 
-            context.EmergencyOverrideRequests
-                .Add(emergencyOverride);
-
+            context.EmergencyOverrideRequests.Add(emergencyOverride);
             await context.SaveChangesAsync();
 
             return new EmergencyOverrideResponseDTO
@@ -106,7 +106,6 @@ namespace OTMS.Service.Services
                 ApprovedAt = emergencyOverride.ApprovedAt,
                 OverrideUntil = emergencyOverride.OverrideUntil
             };
-
         }
     }
 }

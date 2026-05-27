@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OTMS.Common;
 using OTMS.Common.Constraints;
 using OTMS.Data;
 using OTMS.Entities.DTOs;
@@ -57,7 +58,20 @@ namespace OTMS.Service.Services
 
                 if (!hasEmergencyOverride)
                 {
-                    throw new Exception("Your account is currently on leave.");
+                    // Get the active leave for this employee
+                    var activeLeave = await context.LeaveRequests
+                        .FirstOrDefaultAsync(lr =>
+                            lr.AccountId == employee.Account.AccountId &&
+                            lr.Approval_Status == "Approved");
+
+                    // Generate limited override token
+                    var overrideToken = CreateOverrideToken(employee);
+
+                    throw new OnLeaveException(
+                        overrideToken,
+                        activeLeave?.LeaveId ?? Guid.Empty,
+                        employee.EmployeeName ?? string.Empty
+                    );
                 }
 
                 employee.Account.AccountStatus = "Emergency Overriden";
@@ -323,6 +337,29 @@ namespace OTMS.Service.Services
 
             return new JwtSecurityTokenHandler()
                 .WriteToken(tokenDescriptor);
+        }
+
+        private string CreateOverrideToken(Employee employee)
+        {
+            var claims = new List<Claim>
+    {
+        new Claim(ClaimTypes.NameIdentifier, employee.Account!.AccountId.ToString()),
+        new Claim(ClaimTypes.Name, employee.EmployeeNumber),
+        new Claim("token_type", "emergency_override"),  // ← scoped claim
+    };
+
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(configuration.GetValue<string>("AppSettings:Token")!));
+
+            var tokenDescriptor = new JwtSecurityToken(
+                issuer: configuration.GetValue<string>("AppSettings:Issuer"),
+                audience: configuration.GetValue<string>("AppSettings:Audience"),
+                claims: claims,
+                expires: DateTime.UtcNow.AddMinutes(15),  // ← short expiry
+                signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha512)
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(tokenDescriptor);
         }
 
         private async Task<Employee?> ValidateRefreshTokenAsync(

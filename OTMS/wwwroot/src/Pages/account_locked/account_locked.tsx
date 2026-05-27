@@ -174,12 +174,14 @@ function ContactAdminModal({
 function EmergencyOverrideModal({
     employeeNumber,
     employeeName,
-    password,
+    overrideToken,
+    leaveId,
     onClose,
 }: {
     employeeNumber: string;
     employeeName: string;
-    password: string;
+    overrideToken: string;
+    leaveId: string;
     onClose: () => void;
 }) {
     const [reason, setReason] = useState('');
@@ -188,34 +190,27 @@ function EmergencyOverrideModal({
     const [error, setError] = useState('');
 
     const handleSubmit = async () => {
-        if (!reason.trim()) { setError('Please provide a reason for the override request.'); return; }
+        if (!reason.trim()) {
+            setError('Please provide a reason for the override request.');
+            return;
+        }
+
         setSubmitting(true);
         setError('');
+
         try {
-
-            // Step 1: silently get a token using their credentials
-            const loginRes = await fetch('/api/authentication/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ employeeNumber, password }),
-            });
-
-            const loginData = await loginRes.json().catch(() => ({}));
-            const token = loginData?.accessToken;
-
-            if (!token) {
+            if (!overrideToken) {
                 throw new Error('Unable to authenticate. Please contact your administrator directly.');
             }
 
-            // Step 2: submit the override request with the token
             const res = await fetch('/api/emergency_override_controls/request', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${overrideToken}`,
                 },
                 body: JSON.stringify({
-                    leaveId: loginData?.leaveId,
+                    leaveId,
                     reason: reason.trim(),
                 }),
             });
@@ -328,10 +323,12 @@ export default function AccountLocked() {
         employeeNumber?: string;
         employeeName?: string;
         reason?: string;
-        password?: string;
+        overrideToken?: string;
+        leaveId?: string;
     } | null;
 
-    const password = state?.password || '';
+    const overrideToken = state?.overrideToken || '';
+    const leaveId = state?.leaveId || '';
     const employeeName = state?.employeeName || 'Employee';
     const employeeNumber = state?.employeeNumber || '—';
     const reason = state?.reason || '';
@@ -462,7 +459,8 @@ export default function AccountLocked() {
                 <EmergencyOverrideModal
                     employeeNumber={employeeNumber}
                     employeeName={employeeName}
-                    password={password}
+                    overrideToken={overrideToken}
+                    leaveId={leaveId}
                     onClose={() => setShowOverrideModal(false)}
                 />
             )}
