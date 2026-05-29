@@ -398,8 +398,8 @@ body {
 
 .bg-danger {
     background: var(--status-failed-bg);
-    color: var(--status-failed);
-}
+    color: var(--status-failed);  
+}  
 
 /* ─── Welcome Banner ─────────────────────────────────────────────────────── */
 .welcome-banner {

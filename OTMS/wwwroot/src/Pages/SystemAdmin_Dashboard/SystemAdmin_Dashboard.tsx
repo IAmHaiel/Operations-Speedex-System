@@ -30,6 +30,10 @@ import {
     Filter,
     Copy,
     ShieldAlert,
+    LogOut,
+    Settings,
+    Activity,
+    FileText,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import './SystemAdmin_Dashboard.css';
@@ -39,7 +43,15 @@ import { useToast } from '../../components/Toast/Toast';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type NavTab = 'dashboard' | 'employees' | 'delivery' | 'analytics' | 'emergency' | 'profile';
+type NavTab =
+    | 'dashboard'
+    | 'employees'
+    | 'delivery'
+    | 'analytics'
+    | 'settings'
+    | 'activity_logs'
+    | 'emergency_override'
+    | 'profile';
 
 interface EmployeeRegisterDTO {
     employeeNumber: string;
@@ -112,21 +124,22 @@ const NAV_GROUPS = [
         label: 'MAIN MENU',
         items: [
             { tab: 'dashboard' as NavTab, icon: LayoutDashboard, label: 'Dashboard' },
-            { tab: 'employees' as NavTab, icon: Package, label: 'Manage Employees' },
+            { tab: 'employees' as NavTab, icon: Users, label: 'Employees' },
+            { tab: 'emergency' as NavTab, icon: FileText, label: 'Emergency Override' },
         ],
     },
     {
         label: 'INTEGRATION',
         items: [
-            { tab: 'delivery' as NavTab, icon: Truck, label: 'Delivery' },
-            { tab: 'analytics' as NavTab, icon: BarChart3, label: 'Analytics' },
+            { tab: 'delivery' as NavTab, icon: FileText, label: 'Delivery Summary' },
+            { tab: 'analytics' as NavTab, icon: BarChart3, label: 'Analytics View' },
         ],
     },
     {
         label: 'SYSTEM',
         items: [
-            { tab: 'profile' as NavTab, icon: UserCircle2, label: 'Profile' },
-            { tab: 'emergency' as NavTab, icon: ShieldAlert, label: 'Emergency Overrides' },
+            { tab: 'settings' as NavTab, icon: Settings, label: 'Settings' },
+            { tab: 'activity_logs' as NavTab, icon: Activity, label: 'Activity Logs' },
         ],
     },
 ];
@@ -180,6 +193,16 @@ const LEAVE_STATUS_META: Record<LeaveStatus, { label: string; cls: string; icon:
     pending: { label: 'Pending', cls: 'badge-amber', icon: <Clock size={12} /> },
     approved: { label: 'Approved', cls: 'badge-green', icon: <CheckCircle2 size={12} /> },
     declined: { label: 'Declined', cls: 'badge-red', icon: <X size={12} /> },
+};
+
+const getInitials = (name: string): string => {
+    if (!name) return 'SA';
+    const cleanName = name.trim();
+    const parts = cleanName.split(/\s+/);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return cleanName.slice(0, 2).toUpperCase();
 };
 
 // ─── Add Employee Modal ───────────────────────────────────────────────────────
@@ -675,6 +698,7 @@ interface DashboardTabProps {
     activityLogs: ActivityLog[];
     loading: boolean;
     onSelectEmployee: (emp: RecentEmployee) => void;
+    onViewAll: () => void;
 }
 
 function DashboardTab({
@@ -682,7 +706,8 @@ function DashboardTab({
     recentEmployees,
     activityLogs,
     loading,
-    onSelectEmployee
+    onSelectEmployee,
+    onViewAll,
 }: DashboardTabProps) {
 
     const activeCount =
@@ -762,13 +787,12 @@ function DashboardTab({
                 <div className="card">
                     <div className="card-header">
                         <h3>Recent Employees</h3>
-
-                        <a
-                            href="/employees"
+                        <button
                             className="view-all-link"
+                            onClick={onViewAll}
                         >
-                            View all →
-                        </a>
+                            View more →
+                        </button>
                     </div>
 
                     <div className="data-table-wrap">
@@ -776,7 +800,7 @@ function DashboardTab({
                             <thead>
                                 <tr>
                                     <th>NAME</th>
-                                    <th>ID</th>
+                                    <th>EMPLOYEE NO.</th>
                                     <th>ROLE</th>
                                     <th>STATUS</th>
                                 </tr>
@@ -964,21 +988,21 @@ function ManageEmployeesTab({ employees, loading, onSelectEmployee, onAddEmploye
             .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
             .then((data: any[]) => {
                 setLeaveRequests(Array.isArray(data) ? data.map(r => ({
-                    id: r.leaveId,                                                             
+                    id: r.leaveId,
                     employeeNumber: r.employeeNumber ?? '',
                     employeeName: r.employeeName ?? '',
                     role: r.role ?? '',
                     leaveType: ((r.leave_Type ?? r.leaveType ?? 'other') as string).toLowerCase() as LeaveType,
-                    startDate: (r.start_Date ?? r.startDate ?? '').split('T')[0],               
+                    startDate: (r.start_Date ?? r.startDate ?? '').split('T')[0],
                     endDate: (r.end_Date ?? r.endDate ?? '').split('T')[0],
                     reason: r.reason ?? '',
                     status: ((r.approval_Status ?? r.approvalStatus ?? 'pending') as string).toLowerCase() as LeaveStatus,
                     submittedAt: (r.submittedAt ?? r.start_Date ?? '').split('T')[0],
                     reviewedBy: r.reviewedBy ?? undefined,
-                    reviewNote: r.leaveRequestNote ?? r.reviewNote ?? undefined,                
+                    reviewNote: r.leaveRequestNote ?? r.reviewNote ?? undefined,
                 })) : []);
             })
-            .catch(() => setLeaveRequests([]))                                                  
+            .catch(() => setLeaveRequests([]))
             .finally(() => setLeaveLoading(false));
     }, []);
 
@@ -2529,11 +2553,13 @@ export default function Dashboard() {
 
     const pageTitles: Record<NavTab, string> = {
         dashboard: 'Dashboard',
-        employees: 'Manage Employees',
-        delivery: 'Delivery',
-        analytics: 'Analytics',
+        employees: 'Employees',
+        emergency_override: 'Emergency Override',
+        delivery: 'Delivery Summary',
+        analytics: 'Analytics View',
+        settings: 'Settings',
+        activity_logs: 'Activity Logs',
         profile: 'My Profile',
-        emergency: 'Emergency Overrides',
     };
 
     return (
@@ -2541,37 +2567,61 @@ export default function Dashboard() {
             {/* ── Sidebar ── */}
             <aside className="sidebar">
                 <div className="sidebar-logo">
-                    <img src="/src/assets/SpeedexLogo.jpg" alt="Speedex Logo" className="sidebar-logo-img" />
+                    <img src="/src/assets/SpeedexLogo.jpg" alt="Speedex Logo" className="logo-image" />
                 </div>
-                <div className="sidebar-role-pill">SYSTEM ADMIN</div>
+
+                <div className="sidebar-role-section">
+                    <div className="sidebar-role-badge super-admin">
+                        <div className="role-dot-inner" />
+                        SUPER ADMIN
+                    </div>
+                </div>
+
                 <nav className="sidebar-nav">
                     {NAV_GROUPS.map(group => (
-                        <div key={group.label}>
-                            <div className="nav-section-label">{group.label}</div>
-                            {group.items.map(({ tab, icon: Icon, label }) => (
-                                <div
-                                    key={tab}
-                                    className={`nav-item${activeTab === tab ? ' active' : ''}`}
-                                    onClick={() => setActiveTab(tab)}
-                                >
-                                    <Icon size={18} />
-                                    <span>{label}</span>
-                                </div>
-                            ))}
+                        <div key={group.label} className="nav-section">
+                            <div className="nav-section-title">{group.label}</div>
+
+                            {group.items.map(({ tab, icon: Icon, label }) => {
+                                const isActive = activeTab === tab;
+
+                                return (
+                                    <div
+                                        key={tab}
+                                        className={`nav-item${isActive ? ' nav-item-active' : ''}`}
+                                        onClick={() => setActiveTab(tab)}
+                                    >
+                                        <Icon size={18} />
+                                        <span className="nav-item-label">{label}</span>
+                                    </div>
+                                );
+                            })}
                         </div>
                     ))}
                 </nav>
-                <div className="sidebar-footer">
-                    <div className="user-block">
-                        <div className="avatar-circle">
-                            {employeeName ? employeeName.charAt(0).toUpperCase() : 'E'}
+
+                <div className="sidebar-footer-profile">
+                    <div className="profile-card">
+                        <div className="profile-avatar">
+                            {getInitials(employeeName || 'Super Admin')}
                         </div>
-                        <div className="user-text">
-                            <span className="welcome-text">Welcome!</span>
-                            <strong>{employeeName || 'Employee'}</strong>
+
+                        <div className="profile-info">
+                            <span className="profile-name">
+                                {employeeName || 'Super Admin'}
+                            </span>
+                            <span className="profile-role">SUPER ADMIN</span>
                         </div>
+
+                        <button
+                            className="profile-logout"
+                            onClick={handleLogout}
+                            title="Logout"
+                            aria-label="Logout"
+                        >
+                            <LogOut size={18} />
+                        </button>
                     </div>
-                    <button className="logout-btn-sidebar" onClick={handleLogout}>Logout</button>
                 </div>
             </aside>
 
@@ -2580,33 +2630,54 @@ export default function Dashboard() {
                 <div className="dashboard-header">
                     <div className="header-title">
                         <h2>{pageTitles[activeTab]}</h2>
+
                         <p>
                             Speedex Courier Inc. —{' '}
                             {new Date().toLocaleDateString('en-US', {
-                                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
                             })}
                         </p>
                     </div>
-                    <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+
+                    <div
+                        className="header-actions"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                        }}
+                    >
                         <div className="header-search-wrap">
                             <Search size={14} className="header-search-icon" />
+
                             <input
                                 type="text"
                                 className="header-search-input"
                                 placeholder="Search employee, task…"
                             />
                         </div>
-                    {(activeTab === 'dashboard' || activeTab === 'employees') && (
-                        <div className="header-actions">
-                            <button className="quick-action-btn-header" onClick={() => setShowAddModal(true)}>
-                                <Users size={18} /> Add Employee
-                            </button>
-                        </div>
-                        )}
+
+                        {(activeTab === 'dashboard' ||
+                            activeTab === 'employees') && (
+                                <div className="header-actions">
+                                    <button
+                                        className="quick-action-btn-header"
+                                        onClick={() => setShowAddModal(true)}
+                                    >
+                                        <Users size={18} />
+                                        Add Employee
+                                    </button>
+                                </div>
+                            )}
+
                         <NotificationBell apiEndpoint="/api/notification/my-notifications" />
                     </div>
                 </div>
 
+                {/* Dashboard */}
                 {activeTab === 'dashboard' && (
                     <DashboardTab
                         employees={employees}
@@ -2614,8 +2685,11 @@ export default function Dashboard() {
                         activityLogs={activityLogs}
                         loading={loading}
                         onSelectEmployee={handleSelectEmployee}
+                        onViewAll={() => setActiveTab('employees')}
                     />
                 )}
+
+                {/* Employees */}
                 {activeTab === 'employees' && (
                     <ManageEmployeesTab
                         employees={employees}
@@ -2624,28 +2698,93 @@ export default function Dashboard() {
                         onAddEmployee={() => setShowAddModal(true)}
                     />
                 )}
-                {activeTab === 'profile' && <ProfileTab />}
+
+                {/* Profile / Settings */}
+                {(activeTab === 'profile' ||
+                    activeTab === 'settings') && <ProfileTab />}
+
+                {/* Delivery */}
                 {activeTab === 'delivery' && (
                     <div className="dashboard-content">
                         <div className="card">
-                            <div className="empty-state" style={{ padding: 48 }}>
+                            <div
+                                className="empty-state"
+                                style={{ padding: 48 }}
+                            >
                                 <Truck size={32} />
                                 <p>Delivery module coming soon.</p>
                             </div>
                         </div>
                     </div>
                 )}
+
+                {/* Analytics */}
                 {activeTab === 'analytics' && (
                     <div className="dashboard-content">
                         <div className="card">
-                            <div className="empty-state" style={{ padding: 48 }}>
+                            <div
+                                className="empty-state"
+                                style={{ padding: 48 }}
+                            >
                                 <BarChart3 size={32} />
                                 <p>Analytics module coming soon.</p>
                             </div>
                         </div>
                     </div>
                 )}
-                {activeTab === 'emergency' && <EmergencyOverridesTab />}
+
+                {/* Emergency */}
+                {activeTab === 'emergency_override' && (
+                    <EmergencyOverridesTab />
+                )}
+
+                {/* Activity Logs */}
+                {activeTab === 'activity_logs' && (
+                    <div className="dashboard-content">
+                        <div className="card">
+                            <div className="card-header">
+                                <h3>System Activity Logs</h3>
+                            </div>
+
+                            {activityLogs.length === 0 ? (
+                                <div
+                                    className="empty-state"
+                                    style={{ padding: 48 }}
+                                >
+                                    <Activity size={32} />
+                                    <p>No activity logs found.</p>
+                                </div>
+                            ) : (
+                                <div className="data-table-wrap">
+                                    <table className="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>DESCRIPTION</th>
+                                                <th>TIMESTAMP</th>
+                                            </tr>
+                                        </thead>
+
+                                        <tbody>
+                                            {activityLogs.map(log => (
+                                                <tr key={log.id}>
+                                                    <td className="cell-name">
+                                                        {log.description}
+                                                    </td>
+
+                                                    <td className="cell-muted">
+                                                        {new Date(
+                                                            log.timestamp
+                                                        ).toLocaleString()}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </main>
 
             {/* ── Modals ── */}
@@ -2658,6 +2797,7 @@ export default function Dashboard() {
                     }}
                 />
             )}
+
             {selectedEmployee && (
                 <EmployeeDetailModal
                     employee={selectedEmployee}
