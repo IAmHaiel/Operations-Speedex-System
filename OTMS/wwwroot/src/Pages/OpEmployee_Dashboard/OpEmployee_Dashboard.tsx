@@ -1295,7 +1295,7 @@ export default function EmployeeDashboard() {
                         <h2>{pageTitles[activeTab]}</h2>
                         <p>Dashboard — {today}</p>
                     </div>
-                    <NotificationBell apiEndpoint="/api/notifications" />
+                    <NotificationBell apiEndpoint="/api/notification/my-notifications" />
                 </div>
 
                 {activeTab === 'dashboard' && (
