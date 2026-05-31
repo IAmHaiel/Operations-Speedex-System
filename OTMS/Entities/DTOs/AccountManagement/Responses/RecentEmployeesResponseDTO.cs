@@ -1,4 +1,4 @@
-﻿namespace OTMS.Entities.DTOs.AccountManagement.Responses
+namespace OTMS.Entities.DTOs.AccountManagement.Responses
 {
     public class RecentEmployeesResponseDTO
     {
@@ -7,6 +7,7 @@
         public string ContactNumber { get; set; }
         public string Role { get; set; }
         public string AccountStatus { get; set; }
+        public string PresenceStatus { get; set; } = "Offline";
 
     }
 }

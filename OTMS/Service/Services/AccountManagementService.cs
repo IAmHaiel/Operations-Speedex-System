@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -194,43 +194,78 @@ namespace OTMS.Service.Services
 
         public async Task<List<SearchAccountStatusResponseDTO>> GetAccountsByStatus(SearchAccountStatusDTO request)
         {
-            return await context.Employees
+            var employees = await context.Employees
                 .Include(e => e.Account)
+                    .ThenInclude(a => a.ActivityLogs)
                 .Where(e => e.Account.AccountStatus
                     .Contains(request.Status))
-                .Select(e => new SearchAccountStatusResponseDTO
+                .ToListAsync();
+
+            return employees.Select(e =>
+            {
+                var latestLog = e.Account?.ActivityLogs
+                    .OrderByDescending(al => al.CreatedAt)
+                    .FirstOrDefault();
+
+                var presenceStatus = latestLog?.ActivityType switch
+                {
+                    "Login" => "Online",
+                    "Logout" => "Offline",
+                    _ => "Offline"
+                };
+
+                return new SearchAccountStatusResponseDTO
                 {
                     EmployeeNumber = e.EmployeeNumber,
                     EmployeeName = e.EmployeeName,
                     ContactNumber = e.ContactNumber,
                     Role = e.Account != null ? e.Account.Role : "No Account",
                     AccountStatus = e.Account != null ? e.Account.AccountStatus : "No Account",
+                    PresenceStatus = presenceStatus,
                     Success = true
-                })
-                .ToListAsync();
+                };
+            }).ToList();
         }
 
         public async Task<List<RecentEmployeesResponseDTO>> GetRecentEmployees()
         {
-            return await context.Employees
+            var employees = await context.Employees
                 .Include(e => e.Account)
+                    .ThenInclude(a => a.ActivityLogs)
                 .OrderByDescending(e => e.CreatedAt)
                 .Take(10)
-                .Select(e => new RecentEmployeesResponseDTO
+                .ToListAsync();
+
+            return employees.Select(e =>
+            {
+                var latestLog = e.Account?.ActivityLogs
+                    .OrderByDescending(al => al.CreatedAt)
+                    .FirstOrDefault();
+
+                var presenceStatus = latestLog?.ActivityType switch
+                {
+                    "Login" => "Online",
+                    "Logout" => "Offline",
+                    _ => "Offline"
+                };
+
+                return new RecentEmployeesResponseDTO
                 {
                     EmployeeNumber = e.EmployeeNumber,
                     EmployeeName = e.EmployeeName,
                     ContactNumber = e.ContactNumber,
                     Role = e.Account != null ? e.Account.Role : "No Account",
                     AccountStatus = e.Account != null ? e.Account.AccountStatus : "No Account",
-                })
-                .ToListAsync();
+                    PresenceStatus = presenceStatus,
+                };
+            }).ToList();
         }
 
         public async Task<SearchUserResponseDTO?> SearchUser(SearchUserDTO request)
         {
             var employee = await context.Employees
                 .Include(e => e.Account)
+                    .ThenInclude(a => a.ActivityLogs)
                 .FirstOrDefaultAsync(e =>
                     e.EmployeeName.Contains(request.Search) ||
                     e.EmployeeNumber.Contains(request.Search) ||
@@ -242,12 +277,24 @@ namespace OTMS.Service.Services
                 return null;
             }
 
+            var latestLog = employee.Account.ActivityLogs
+                .OrderByDescending(al => al.CreatedAt)
+                .FirstOrDefault();
+
+            var presenceStatus = latestLog?.ActivityType switch
+            {
+                "Login" => "Online",
+                "Logout" => "Offline",
+                _ => "Offline"
+            };
+
             return new SearchUserResponseDTO
             {
                 EmployeeNumber = employee.EmployeeNumber,
                 EmployeeName = employee.EmployeeName,
                 Role = employee.Account.Role,
                 AccountStatus = employee.Account.AccountStatus,
+                PresenceStatus = presenceStatus,
                 Success = true
             };
 

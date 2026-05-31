@@ -1,4 +1,4 @@
-﻿namespace OTMS.Entities.DTOs.Profile.Responses
+namespace OTMS.Entities.DTOs.Profile.Responses
 {
     public class ViewProfileResponseDTO
     {
@@ -11,5 +11,6 @@
 
         public string Role { get; set; } = string.Empty;
         public string AccountStatus { get; set; } = string.Empty;
+        public string PresenceStatus { get; set; } = "Offline";
     }
 }

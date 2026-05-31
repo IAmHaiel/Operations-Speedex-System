@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using OTMS.Entities.DTOs;
@@ -72,16 +72,33 @@ namespace OTMS.Controllers
             {
                 var employees = await context.Accounts
                     .Include(a => a.Employee)
+                    .Include(a => a.ActivityLogs)
                     .Where(a => a.Role == "Encoder" || a.Role == "Coordinator")
-                    .Select(a => new
+                    .ToListAsync();
+
+                var result = employees.Select(a =>
+                {
+                    var latestLog = a.ActivityLogs
+                        .OrderByDescending(al => al.CreatedAt)
+                        .FirstOrDefault();
+
+                    var presenceStatus = latestLog?.ActivityType switch
+                    {
+                        "Login" => "Online",
+                        "Logout" => "Offline",
+                        _ => "Offline"
+                    };
+
+                    return new
                     {
                         accountId = a.AccountId,
                         employeeName = a.Employee.EmployeeName,
-                        role = a.Role
-                    })
-                    .ToListAsync();
+                        role = a.Role,
+                        presenceStatus
+                    };
+                }).ToList();
 
-                return Ok(employees);
+                return Ok(result);
             }
             catch (Exception ex)
             {

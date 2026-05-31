@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ClipboardList,
     CheckCircle2,
@@ -42,6 +42,7 @@ interface TeamMember {
     accountId: string;      // use accountId (Guid) from backend
     employeeName: string;
     role: string;
+    presenceStatus?: string;
 }
 
 interface Task {
@@ -141,8 +142,17 @@ const fmtDate = (d: string): string => {
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 const Avatar: React.FC<{ member: TeamMember; size?: 'sm' | 'md' }> = ({ member, size = 'sm' }) => (
-    <div className={`avatar-chip av-blue ${size === 'md' ? 'avatar-md' : ''}`}>
-        {member.employeeName.charAt(0).toUpperCase()}
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div className={`avatar-chip av-blue ${size === 'md' ? 'avatar-md' : ''}`}>
+            {member.employeeName.charAt(0).toUpperCase()}
+        </div>
+        <span style={{
+            position: 'absolute', bottom: 1, right: 1,
+            width: 9, height: 9, borderRadius: '50%',
+            background: member.presenceStatus === 'Online' ? '#05cd99' : '#a3aed0',
+            border: '2px solid var(--bg-primary, #fff)',
+            display: 'block'
+        }} title={member.presenceStatus ?? 'Offline'} />
     </div>
 );
 
@@ -1191,6 +1201,7 @@ export default function OpsAdminDashboard() {
     const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
     const [loadingTasks, setLoadingTasks] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [userPresenceStatus, setUserPresenceStatus] = useState('Offline');
 
     const [showNew, setShowNew] = useState(false);
     const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -1231,6 +1242,7 @@ export default function OpsAdminDashboard() {
                 accountId: e.accountId ?? e.AccountId ?? e.id,       // try variants
                 employeeName: e.employeeName ?? e.EmployeeName ?? e.name,
                 role: e.role ?? e.Role ?? '',
+                presenceStatus: e.presenceStatus ?? 'Offline',
             })));
         } catch {
             setTeamMembers([]);
@@ -1240,6 +1252,14 @@ export default function OpsAdminDashboard() {
     useEffect(() => {
         fetchTasks();
         fetchTeamMembers();
+        // Fetch own presence status
+        const t = token();
+        if (t) {
+            fetch('/api/profile/view-profile', { headers: { Authorization: `Bearer ${t}` } })
+                .then(res => res.ok ? res.json() : null)
+                .then(data => { if (data?.presenceStatus) setUserPresenceStatus(data.presenceStatus); })
+                .catch(() => {});
+        }
     }, []);
 
     // ── Create Task ──
@@ -1394,8 +1414,17 @@ export default function OpsAdminDashboard() {
 
                 <div className="sidebar-footer-profile">
                     <div className="profile-card">
-                        <div className="profile-avatar">
-                            {getInitials(employeeName || 'Operation Admin')}
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                            <div className="profile-avatar">
+                                {getInitials(employeeName || 'Operation Admin')}
+                            </div>
+                            <span style={{
+                                position: 'absolute', bottom: 1, right: 1,
+                                width: 9, height: 9, borderRadius: '50%',
+                                background: userPresenceStatus === 'Online' ? '#05cd99' : '#a3aed0',
+                                border: '2px solid var(--sidebar-bg, #1b2559)',
+                                display: 'block'
+                            }} />
                         </div>
                         <div className="profile-info">
                             <span className="profile-name">{employeeName || 'Op Admin'}</span>

@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OTMS.Common.Constraints;
 using OTMS.Data;
@@ -152,10 +152,22 @@ namespace OTMS.Service.Services
 
             var profile = await context.Employees
                 .Include(e => e.Account)
+                    .ThenInclude(a => a.ActivityLogs)
                 .FirstOrDefaultAsync(e => e.Account.AccountId.ToString() == claimProfile);
 
             if (profile is null && profile.Account is null)
                 return null;
+
+            var latestLog = profile.Account.ActivityLogs
+                .OrderByDescending(al => al.CreatedAt)
+                .FirstOrDefault();
+
+            var presenceStatus = latestLog?.ActivityType switch
+            {
+                "Login" => "Online",
+                "Logout" => "Offline",
+                _ => "Offline"
+            };
 
             return new ViewProfileResponseDTO
             {
@@ -164,6 +176,7 @@ namespace OTMS.Service.Services
                 ContactNumber = profile.ContactNumber,
                 AccountStatus = profile.Account.AccountStatus,
                 Role = profile.Account.Role,
+                PresenceStatus = presenceStatus,
                 CreatedAt = profile.CreatedAt,
                 UpdatedAt = profile.UpdatedAt ?? profile.CreatedAt
             };

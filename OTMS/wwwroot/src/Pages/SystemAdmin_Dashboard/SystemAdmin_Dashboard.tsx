@@ -82,6 +82,7 @@ interface RecentEmployee {
     contactNumber: string;
     role: string;
     accountStatus: string;
+    presenceStatus?: string;
 }
 
 type LeaveType = 'vacation' | 'sick' | 'emergency' | 'personal' | 'maternity' | 'other';
@@ -754,8 +755,17 @@ function DashboardTab({
                                         >
                                             <td>
                                                 <div className="emp-name-cell">
-                                                    <div className="emp-avatar">
-                                                        {emp.employeeName.charAt(0).toUpperCase()}
+                                                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                                                        <div className="emp-avatar">
+                                                            {emp.employeeName.charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <span style={{
+                                                            position: 'absolute', bottom: 1, right: 1,
+                                                            width: 9, height: 9, borderRadius: '50%',
+                                                            background: emp.presenceStatus === 'Online' ? '#05cd99' : '#a3aed0',
+                                                            border: '2px solid var(--bg-primary, #fff)',
+                                                            display: 'block'
+                                                        }} title={emp.presenceStatus ?? 'Offline'} />
                                                     </div>
                                                     <span className="cell-name">{emp.employeeName}</span>
                                                 </div>
@@ -997,7 +1007,16 @@ function ManageEmployeesTab({ employees, loading, onSelectEmployee, onAddEmploye
                                         <tr key={emp.employeeNumber} className="clickable-row" onClick={() => onSelectEmployee(emp)}>
                                             <td>
                                                 <div className="emp-name-cell">
-                                                    <div className="emp-avatar">{emp.employeeName.charAt(0).toUpperCase()}</div>
+                                                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                                                        <div className="emp-avatar">{emp.employeeName.charAt(0).toUpperCase()}</div>
+                                                        <span style={{
+                                                            position: 'absolute', bottom: 1, right: 1,
+                                                            width: 9, height: 9, borderRadius: '50%',
+                                                            background: emp.presenceStatus === 'Online' ? '#05cd99' : '#a3aed0',
+                                                            border: '2px solid var(--bg-primary, #fff)',
+                                                            display: 'block'
+                                                        }} title={emp.presenceStatus ?? 'Offline'} />
+                                                    </div>
                                                     {emp.employeeName}
                                                 </div>
                                             </td>
@@ -2132,6 +2151,7 @@ export default function Dashboard() {
                             contactNumber: e.contactNumber,
                             role: e.role,
                             accountStatus: e.accountStatus ?? 'Unknown',
+                            presenceStatus: e.presenceStatus ?? 'Offline',
                         }))
                         .filter((e: RecentEmployee) => e.accountStatus !== 'Deleted')
                     : [];

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard,
@@ -78,6 +78,7 @@ interface UserProfile {
     phone: string;
     role: string;
     accountStatus: string;
+    presenceStatus?: string;
 }
 
 interface LeaveRecord {
@@ -998,6 +999,14 @@ const ProfileTab: React.FC<ProfileTabProps> = ({ user, onUpdateUser }) => {
                     <div className="ph-badges">
                         <span className="badge badge-blue">{user.employeeId}</span>
                         <span className={`badge ${user.accountStatus === 'Active' ? 'badge-green' : 'badge-red'}`}>{user.accountStatus}</span>
+                        <span className={`badge ${user.presenceStatus === 'Online' ? 'badge-green' : 'badge-gray'}`}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{
+                                display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+                                background: user.presenceStatus === 'Online' ? '#05cd99' : '#a3aed0'
+                            }} />
+                            {user.presenceStatus ?? 'Offline'}
+                        </span>
                     </div>
                 </div>
                 <button className={`btn ${editMode ? 'btn-danger' : 'btn-primary'} ph-edit-btn`}
@@ -1164,6 +1173,7 @@ export default function EmployeeDashboard() {
                     phone: data.contactNumber ?? localStorage.getItem('contactNumber') ?? '',
                     role: data.role ?? localStorage.getItem('role') ?? '',
                     accountStatus: data.accountStatus ?? 'Active',
+                    presenceStatus: data.presenceStatus ?? 'Offline',
                 };
                 setUser(fetched);
                 localStorage.setItem('employeeName', fetched.fullName);
@@ -1274,8 +1284,17 @@ export default function EmployeeDashboard() {
                 {/* Footer profile card — mirrors SystemAdmin exactly */}
                 <div className="sidebar-footer-profile">
                     <div className="profile-card">
-                        <div className="profile-avatar">
-                            {loadingUser ? <Loader2 size={16} className="spin" /> : initials}
+                        <div style={{ position: 'relative', display: 'inline-block' }}>
+                            <div className="profile-avatar">
+                                {loadingUser ? <Loader2 size={16} className="spin" /> : initials}
+                            </div>
+                            <span style={{
+                                position: 'absolute', bottom: 1, right: 1,
+                                width: 9, height: 9, borderRadius: '50%',
+                                background: user.presenceStatus === 'Online' ? '#05cd99' : '#a3aed0',
+                                border: '2px solid var(--sidebar-bg, #1b2559)',
+                                display: 'block'
+                            }} />
                         </div>
                         <div className="profile-info">
                             <span className="profile-name">{user.fullName || 'Employee'}</span>
