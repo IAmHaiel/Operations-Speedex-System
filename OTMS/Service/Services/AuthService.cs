@@ -44,6 +44,13 @@ namespace OTMS.Service.Services
                 return null;
             }
 
+            if (!employee.IsEmailVerified)
+            {
+                throw new Exception(
+                    "Please verify your email before logging in. If you haven't received the verification email, please check your spam folder or contact support."
+                );
+            }
+
             if (accountStatus is null || accountStatus == "Deactivated" || accountFailedAttempts == MaxFailedLoginAttempts)
             {
                 return null;
