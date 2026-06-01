@@ -12,8 +12,8 @@ using OTMS.Data;
 namespace OTMS.Migrations
 {
     [DbContext(typeof(OTMSDbContext))]
-    [Migration("20260526062707_init")]
-    partial class init
+    [Migration("20260601133921_UPDB")]
+    partial class UPDB
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

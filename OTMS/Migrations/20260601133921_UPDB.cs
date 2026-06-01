@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace OTMS.Migrations
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class UPDB : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
