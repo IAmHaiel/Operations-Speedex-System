@@ -11,7 +11,7 @@ import AccountLocked from './Pages/account_locked/account_locked'
 import PrivateRoute from './components/Auth/PrivateRoute'
 import ChangePassword from './Pages/change_password/change_password'
 import EmployeeDetail from './Pages/employee_details/employee_detail'
-import VerifyEmail from './Pages/email_verification_page/email_verification_page'
+import EmailVerificationPage from './Pages/email_verification_page/email_verification_page'
 import { ToastProvider } from './components/Toast/Toast'
 
 function PasswordChangedGuard({ children }: { children: React.ReactNode }) {
@@ -60,8 +60,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
                         </PrivateRoute>
                     } />
                     <Route
-                        path = "/verify-email"
-                        element = {<VerifyEmail />}
+                        path="/verify-email"
+                        element={<EmailVerificationPage />}
                     />
                 </Routes>
             </ToastProvider>

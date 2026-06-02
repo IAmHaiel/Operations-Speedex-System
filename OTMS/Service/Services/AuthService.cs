@@ -212,7 +212,7 @@ namespace OTMS.Service.Services
             await context.SaveChangesAsync();
 
             var verificationLink =
-                $"{configuration["ApiBaseUrl"]}/api/authentication/verify-email" +
+                $"{configuration["FrontendBaseUrl"]}/verify-email" +
                 $"?token={employee.EmailVerificationToken}";
 
             // Sending email verification notification

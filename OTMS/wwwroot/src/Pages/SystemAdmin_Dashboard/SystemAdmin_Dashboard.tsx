@@ -59,6 +59,7 @@ interface EmployeeRegisterDTO {
     employeeName: string;
     contactNumber: string;
     role: string;
+    email: string;
 }
 
 interface FieldError {
@@ -66,6 +67,7 @@ interface FieldError {
     employeeName?: string;
     contactNumber?: string;
     role?: string;
+    email?: string;
 }
 
 type FormState = EmployeeRegisterDTO;
@@ -119,6 +121,7 @@ const EMPTY_FORM: FormState = {
     employeeName: '',
     contactNumber: '',
     role: '',
+    email: '',
 };
 
 const NAV_GROUPS = [
@@ -160,6 +163,11 @@ function validate(form: FormState): FieldError {
         errs.contactNumber = 'Enter a valid contact number.';
     }
     if (!form.role) errs.role = 'Please select a role.';
+    if (!form.email.trim()) {
+        errs.email = 'Email address is required.';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+        errs.email = 'Enter a valid email address.';
+    }
     return errs;
 }
 
@@ -235,6 +243,7 @@ function AddEmployeeModal({ onClose, onSuccess }: AddEmployeeModalProps) {
                 employeeName: form.employeeName.trim(),
                 contactNumber: form.contactNumber.trim(),
                 role: toBackendRole(form.role),
+                email: form.email.trim(),           // ← include email
             };
             const res = await fetch('/api/authorization/systemadmin/register', {
                 method: 'POST',
@@ -275,40 +284,81 @@ function AddEmployeeModal({ onClose, onSuccess }: AddEmployeeModalProps) {
                     </div>
                     <button className="icon-btn" onClick={onClose} aria-label="Close"><X size={16} /></button>
                 </div>
+
                 {apiError && (
                     <div className="form-api-error"><AlertCircle size={14} /><span>{apiError}</span></div>
                 )}
+
                 <div className="modal-form">
-                    <div className="field">
-                        <label htmlFor="emp-number">Employee Number</label>
-                        <input id="emp-number" type="text" placeholder="e.g. EMP-0001" value={form.employeeNumber} onChange={handleChange('employeeNumber')} className={errors.employeeNumber ? 'input-error' : ''} />
-                        {errors.employeeNumber && <span className="field-error"><AlertCircle size={12} />{errors.employeeNumber}</span>}
-                    </div>
-                    <div className="field">
-                        <label htmlFor="emp-name">Full Name</label>
-                        <input id="emp-name" type="text" placeholder="e.g. Juan dela Cruz" value={form.employeeName} onChange={handleChange('employeeName')} className={errors.employeeName ? 'input-error' : ''} />
-                        {errors.employeeName && <span className="field-error"><AlertCircle size={12} />{errors.employeeName}</span>}
-                    </div>
+                    {/* ── Account info ── */}
+                    <p className="modal-section-label">Account info</p>
                     <div className="field-row">
                         <div className="field">
-                            <label htmlFor="emp-contact">Contact Number</label>
-                            <input id="emp-contact" type="tel" placeholder="e.g. +63 917 000 0000" value={form.contactNumber} onChange={handleChange('contactNumber')} className={errors.contactNumber ? 'input-error' : ''} />
-                            {errors.contactNumber && <span className="field-error"><AlertCircle size={12} />{errors.contactNumber}</span>}
+                            <label htmlFor="emp-number">Employee Number</label>
+                            <input
+                                id="emp-number" type="text" placeholder="e.g. EMP-0001"
+                                value={form.employeeNumber} onChange={handleChange('employeeNumber')}
+                                className={errors.employeeNumber ? 'input-error' : ''}
+                            />
+                            {errors.employeeNumber && <span className="field-error"><AlertCircle size={12} />{errors.employeeNumber}</span>}
                         </div>
                         <div className="field">
                             <label htmlFor="emp-role">Role</label>
-                            <select id="emp-role" value={form.role} onChange={handleChange('role')} className={errors.role ? 'input-error' : ''}>
+                            <select
+                                id="emp-role" value={form.role} onChange={handleChange('role')}
+                                className={errors.role ? 'input-error' : ''}
+                            >
                                 <option value="">Select a role</option>
                                 {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
                             </select>
                             {errors.role && <span className="field-error"><AlertCircle size={12} />{errors.role}</span>}
                         </div>
                     </div>
+
+                    {/* ── Personal info ── */}
+                    <p className="modal-section-label" style={{ marginTop: 8 }}>Personal info</p>
+                    <div className="field">
+                        <label htmlFor="emp-name">Full Name</label>
+                        <input
+                            id="emp-name" type="text" placeholder="e.g. Juan dela Cruz"
+                            value={form.employeeName} onChange={handleChange('employeeName')}
+                            className={errors.employeeName ? 'input-error' : ''}
+                        />
+                        {errors.employeeName && <span className="field-error"><AlertCircle size={12} />{errors.employeeName}</span>}
+                    </div>
+                    <div className="field-row">
+                        <div className="field">
+                            <label htmlFor="emp-contact">Contact Number</label>
+                            <input
+                                id="emp-contact" type="tel" placeholder="e.g. +63 917 000 0000"
+                                value={form.contactNumber} onChange={handleChange('contactNumber')}
+                                className={errors.contactNumber ? 'input-error' : ''}
+                            />
+                            {errors.contactNumber && <span className="field-error"><AlertCircle size={12} />{errors.contactNumber}</span>}
+                        </div>
+                        <div className="field">
+                            <label htmlFor="emp-email">Email Address</label>
+                            <input
+                                id="emp-email" type="email" placeholder="e.g. juan@speedex.com"
+                                value={form.email} onChange={handleChange('email')}
+                                className={errors.email ? 'input-error' : ''}
+                            />
+                            {errors.email && <span className="field-error"><AlertCircle size={12} />{errors.email}</span>}
+                        </div>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 5, marginTop: -6 }}>
+                        <AlertCircle size={11} />
+                        A verification link will be sent to this address after registration.
+                    </p>
                 </div>
+
                 <div className="modal-actions">
                     <button className="btn" onClick={onClose} disabled={submitting}>Cancel</button>
                     <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-                        {submitting ? <><Loader2 size={13} className="spin" /> Registering…</> : <><Save size={13} /> Register Employee</>}
+                        {submitting
+                            ? <><Loader2 size={13} className="spin" /> Registering…</>
+                            : <><Save size={13} /> Register Employee</>
+                        }
                     </button>
                 </div>
             </div>

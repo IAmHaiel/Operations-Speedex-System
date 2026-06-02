@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./email_verification_page.css";
 
@@ -18,7 +18,7 @@ function VerifyEmail() {
             }
             try {
                 await axios.get(
-                    "https://localhost:7048/api/authentication/verify-email",
+                    "/api/authentication/verify-email",
                     { params: { token } }
                 );
                 setState("success");
@@ -116,7 +116,7 @@ function VerifyEmail() {
                                         <p className="ev-alert-desc">Your email address has been confirmed.</p>
                                     </div>
                                 </div>
-                                <a href="/login" className="ev-btn ev-btn--primary">
+                                <a href="/" className="ev-btn ev-btn--primary">
                                     Continue to Login
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
                                         <path d="M5 12h14M12 5l7 7-7 7" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -141,7 +141,7 @@ function VerifyEmail() {
                                     <a href="/resend-verification" className="ev-btn ev-btn--dark">
                                         Resend Verification Email
                                     </a>
-                                    <a href="/login" className="ev-btn ev-btn--outline">
+                                    <a href="/" className="ev-btn ev-btn--outline">
                                         Back to Login
                                     </a>
                                 </div>
