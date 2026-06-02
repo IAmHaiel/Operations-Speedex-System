@@ -224,7 +224,7 @@ namespace OTMS.Service.Services
 
                             Your login credentials are:
 
-                            Email: {employee.Email}
+                            Employee Number: {employee.EmployeeNumber}
                             Password: {GeneratedPassword}
 
                             Please verify your account by clicking the link below:
@@ -276,7 +276,7 @@ namespace OTMS.Service.Services
 
                     Your login credentials are:
 
-                    Email: {employee.Email}
+                    Employee Number: {employee.EmployeeNumber}
                     Password: {GeneratedPassword}
 
                     Please verify your account by clicking the link below:
