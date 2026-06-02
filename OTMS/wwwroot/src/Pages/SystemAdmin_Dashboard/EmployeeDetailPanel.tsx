@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import {
     User,
     Phone,
@@ -494,9 +494,8 @@ export default function EmployeeDetailPanel({
                                             <Icon size={12} /> {label}
                                         </span>
                                         <span
-                                            className={`ed-info-value ${
-                                                label === 'Account Status' ? `status-${value.toLowerCase()}` : ''
-                                            }`}
+                                            className={`ed-info-value ${label === 'Account Status' ? `status-${value.toLowerCase()}` : ''
+                                                }`}
                                         >
                                             {value}
                                         </span>
